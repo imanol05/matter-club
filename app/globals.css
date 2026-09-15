@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  /* Fondos: casi negro con un tiro de azul, como el del logo. */
+  --color-noche: #090c12;
+  --color-carbon: #111723;
+  --color-carbon-2: #18202f;
+  --color-borde: #253045;
+
+  /* Bordó del trazo del logo. */
+  --color-bordo: #a4192d;
+  --color-bordo-2: #c8233f;
+  --color-bordo-3: #6d1220;
+
+  /* Azul marino de la firma. */
+  --color-marino: #24406e;
+  --color-marino-2: #3d6bb0;
+
+  --color-hueso: #f3f6fa;
+  --color-tenue: #8d9ab0;
+
+  --font-display: var(--fuente-display), ui-sans-serif, system-ui, sans-serif;
+  --font-firma: var(--fuente-firma), ui-serif, cursive;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-noche);
+  color: var(--color-hueso);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Textura de fondo: dos halos, uno bordó y uno marino. */
+.fondo-halos {
+  background-image:
+    radial-gradient(
+      60rem 40rem at 12% -12%,
+      color-mix(in oklab, var(--color-bordo) 24%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      50rem 40rem at 96% 6%,
+      color-mix(in oklab, var(--color-marino) 30%, transparent),
+      transparent 70%
+    );
+}
+
+/* Rayado para los horarios bloqueados por el encargado. */
+.rayado {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--color-tenue) 16%, transparent) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
