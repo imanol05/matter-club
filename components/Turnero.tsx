@@ -11,7 +11,6 @@ import {
   esMadrugada,
   etiquetaSemana,
   horaInicio,
-  idSlot,
   jornadasDeLaSemana,
   lunesDeLaSemana,
   rangoBloque,
@@ -19,24 +18,34 @@ import {
   yaPaso,
 } from "@/lib/horarios";
 import { useReservas } from "@/lib/store";
-import type { Reserva } from "@/lib/tipos";
+import type { Ocupacion } from "@/lib/tipos";
 import { DialogoReserva } from "./DialogoReserva";
+import { DialogoEspera } from "./DialogoEspera";
 
 type Modo = "publico" | "encargado";
 
-type EstadoCelda = "libre" | "confirmada" | "pendiente" | "bloqueo" | "pasado";
+type EstadoCelda =
+  | "libre"
+  | "confirmada"
+  | "fijo"
+  | "pendiente"
+  | "bloqueo"
+  | "pasado";
 
-function estadoDe(reserva: Reserva | undefined, pasado: boolean): EstadoCelda {
+function estadoDe(ocupacion: Ocupacion | undefined, pasado: boolean): EstadoCelda {
   if (pasado) return "pasado";
-  if (!reserva) return "libre";
-  if (reserva.estado === "confirmada") return "confirmada";
-  if (reserva.estado === "pendiente") return "pendiente";
+  if (!ocupacion) return "libre";
+  if (ocupacion.tipo === "fijo") return "fijo";
+  if (ocupacion.reserva.estado === "confirmada") return "confirmada";
+  if (ocupacion.reserva.estado === "pendiente") return "pendiente";
   return "bloqueo";
 }
 
-const ETIQUETA: Record<EstadoCelda, string> = {
+/** Lo que ve un visitante: no le importa por qué está tomado, sólo que lo está. */
+const ETIQUETA_PUBLICA: Record<EstadoCelda, string> = {
   libre: "Libre",
   confirmada: "Ocupado",
+  fijo: "Ocupado",
   pendiente: "A confirmar",
   bloqueo: "No disponible",
   pasado: "—",
@@ -44,15 +53,19 @@ const ETIQUETA: Record<EstadoCelda, string> = {
 
 const ESTILO: Record<EstadoCelda, string> = {
   libre:
-    "border-borde bg-carbon text-tenue hover:border-bordo-2 hover:bg-bordo/15 hover:text-hueso cursor-pointer",
+    "border-borde bg-carbon text-tenue hover:border-bordo-2 hover:bg-bordo/15 hover:text-hueso",
   confirmada: "border-bordo/40 bg-bordo/20 text-hueso/90",
+  fijo: "border-bordo/60 bg-bordo/30 text-hueso/90",
   pendiente: "border-marino-2/50 bg-marino/25 text-hueso/90",
   bloqueo: "rayado border-borde bg-carbon/60 text-tenue",
   pasado: "border-borde/40 bg-carbon/30 text-tenue/40",
 };
 
+/** Un horario tomado se puede "pedir igual": ahí entra la lista de espera. */
+const SE_PUEDE_ESPERAR: EstadoCelda[] = ["confirmada", "fijo", "pendiente"];
+
 export function Turnero({ modo = "publico" }: { modo?: Modo }) {
-  const { listo, porSlot, bloquear, eliminar } = useReservas();
+  const { listo, ocupacionDe, contarEsperas, bloquear, eliminar } = useReservas();
 
   // `null` significa "todavía nadie eligió nada", y entonces vale el default
   // que depende de la fecha de hoy. Se resuelve durante el render y no en un
@@ -60,9 +73,13 @@ export function Turnero({ modo = "publico" }: { modo?: Modo }) {
   // que el HTML del servidor nunca llega a mencionar una fecha.
   const [lunesElegido, setLunes] = useState<string | null>(null);
   const [diaElegido, setDiaMovil] = useState<number | null>(null);
-  const [elegido, setElegido] = useState<{ jornada: string; bloque: number } | null>(
+  const [pidiendo, setPidiendo] = useState<{ jornada: string; bloque: number } | null>(
     null,
   );
+  const [esperando, setEsperando] = useState<{
+    jornada: string;
+    bloque: number;
+  } | null>(null);
 
   const hoy = new Date();
   const lunesActual = lunesDeLaSemana(hoy);
@@ -87,15 +104,31 @@ export function Turnero({ modo = "publico" }: { modo?: Modo }) {
 
   const alTocar = (jornada: string, bloque: number, estado: EstadoCelda) => {
     if (modo === "encargado") {
-      const actual = porSlot.get(idSlot(jornada, bloque));
+      const actual = ocupacionDe(jornada, bloque);
       if (estado === "libre") {
         bloquear(jornada, bloque, "Bloqueado por el encargado");
-      } else if (actual?.estado === "bloqueo") {
-        eliminar(actual.id);
+      } else if (actual?.tipo === "reserva" && actual.reserva.estado === "bloqueo") {
+        eliminar(actual.reserva.id);
       }
       return;
     }
-    if (estado === "libre") setElegido({ jornada, bloque });
+    if (estado === "libre") setPidiendo({ jornada, bloque });
+    else if (SE_PUEDE_ESPERAR.includes(estado)) setEsperando({ jornada, bloque });
+  };
+
+  const clickeable = (estado: EstadoCelda) => {
+    if (estado === "pasado") return false;
+    if (modo === "encargado") return estado === "libre" || estado === "bloqueo";
+    return estado === "libre" || SE_PUEDE_ESPERAR.includes(estado);
+  };
+
+  /** En el panel interesa quién es; en público, sólo si está libre. */
+  const textoCelda = (
+    estado: EstadoCelda,
+    ocupacion: Ocupacion | undefined,
+  ): string => {
+    if (modo !== "encargado" || !ocupacion) return ETIQUETA_PUBLICA[estado];
+    return ocupacion.tipo === "fijo" ? ocupacion.fijo.nombre : ocupacion.reserva.nombre;
   };
 
   return (
@@ -110,7 +143,7 @@ export function Turnero({ modo = "publico" }: { modo?: Modo }) {
         onHoy={() => setLunes(lunesActual)}
       />
 
-      {/* Celular: un día por vez. Una grilla de 7×9 no entra en 375px. */}
+      {/* Celular: un día por vez. Una grilla de 7×8 no entra en 375px. */}
       <div className="md:hidden">
         <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-2">
           {jornadas.map((jornada, i) => {
@@ -137,20 +170,20 @@ export function Turnero({ modo = "publico" }: { modo?: Modo }) {
         <ul className="flex flex-col gap-2">
           {bloques.map((bloque) => {
             const jornada = jornadas[diaMovil];
-            const reserva = porSlot.get(idSlot(jornada, bloque));
-            const estado = estadoDe(reserva, yaPaso(jornada, bloque));
-            const clickeable = modo === "encargado" || estado === "libre";
+            const ocupacion = ocupacionDe(jornada, bloque);
+            const estado = estadoDe(ocupacion, yaPaso(jornada, bloque));
+            const enEspera = contarEsperas(jornada, bloque);
             return (
               <li key={bloque}>
                 <button
                   type="button"
-                  disabled={!clickeable || estado === "pasado"}
+                  disabled={!clickeable(estado)}
                   onClick={() => alTocar(jornada, bloque, estado)}
                   className={`flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-left transition-colors ${ESTILO[estado]} ${
-                    clickeable && estado !== "pasado" ? "" : "cursor-default"
+                    clickeable(estado) ? "" : "cursor-default"
                   }`}
                 >
-                  <span className="flex items-baseline gap-2">
+                  <span className="flex flex-col">
                     <span className="text-base font-semibold text-hueso">
                       {rangoBloque(bloque)}
                     </span>
@@ -158,8 +191,16 @@ export function Turnero({ modo = "publico" }: { modo?: Modo }) {
                       <span className="text-[0.65rem] text-tenue">del día siguiente</span>
                     )}
                   </span>
-                  <span className="text-sm">
-                    {modo === "encargado" && reserva ? reserva.nombre : ETIQUETA[estado]}
+                  <span className="flex flex-col items-end">
+                    <span className="text-sm">{textoCelda(estado, ocupacion)}</span>
+                    {modo === "encargado" && ocupacion?.tipo === "fijo" && (
+                      <span className="text-[0.65rem] text-tenue">turno fijo</span>
+                    )}
+                    {modo === "encargado" && enEspera > 0 && (
+                      <span className="text-[0.65rem] text-marino-2">
+                        {enEspera} en espera
+                      </span>
+                    )}
                   </span>
                 </button>
               </li>
@@ -200,80 +241,101 @@ export function Turnero({ modo = "publico" }: { modo?: Modo }) {
           })}
 
           {bloques.map((bloque) => (
-            <FilaBloque
-              key={bloque}
-              bloque={bloque}
-              jornadas={jornadas}
-              porSlot={porSlot}
-              modo={modo}
-              onTocar={alTocar}
-            />
+            <FilaBloque key={bloque} bloque={bloque}>
+              {jornadas.map((jornada) => {
+                const ocupacion = ocupacionDe(jornada, bloque);
+                const estado = estadoDe(ocupacion, yaPaso(jornada, bloque));
+                const enEspera = contarEsperas(jornada, bloque);
+                return (
+                  <button
+                    key={jornada}
+                    type="button"
+                    disabled={!clickeable(estado)}
+                    onClick={() => alTocar(jornada, bloque, estado)}
+                    title={tituloCelda(modo, estado, ocupacion, bloque)}
+                    className={`relative min-h-16 rounded-lg border px-2 py-2 text-xs transition-colors ${ESTILO[estado]} ${
+                      clickeable(estado) ? "" : "cursor-default"
+                    }`}
+                  >
+                    <span className="line-clamp-2 leading-tight">
+                      {textoCelda(estado, ocupacion)}
+                    </span>
+                    {modo === "encargado" && ocupacion?.tipo === "fijo" && (
+                      <span
+                        className="absolute top-1 right-1.5 text-[0.6rem] text-hueso/50"
+                        aria-label="turno fijo"
+                      >
+                        ↻
+                      </span>
+                    )}
+                    {modo === "encargado" && enEspera > 0 && (
+                      <span className="absolute bottom-1 right-1.5 text-[0.6rem] text-marino-2">
+                        +{enEspera}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </FilaBloque>
           ))}
         </div>
       </div>
 
       <Referencias modo={modo} />
 
-      {elegido && (
+      {pidiendo && (
         <DialogoReserva
-          jornada={elegido.jornada}
-          bloque={elegido.bloque}
-          onCerrar={() => setElegido(null)}
+          jornada={pidiendo.jornada}
+          bloque={pidiendo.bloque}
+          onCerrar={() => setPidiendo(null)}
+        />
+      )}
+      {esperando && (
+        <DialogoEspera
+          jornada={esperando.jornada}
+          bloque={esperando.bloque}
+          onCerrar={() => setEsperando(null)}
         />
       )}
     </div>
   );
 }
 
+function tituloCelda(
+  modo: Modo,
+  estado: EstadoCelda,
+  ocupacion: Ocupacion | undefined,
+  bloque: number,
+): string {
+  if (modo === "encargado" && ocupacion) {
+    const quien =
+      ocupacion.tipo === "fijo"
+        ? `${ocupacion.fijo.nombre} · turno fijo`
+        : ocupacion.reserva.nombre;
+    const tel =
+      ocupacion.tipo === "fijo" ? ocupacion.fijo.telefono : ocupacion.reserva.telefono;
+    return tel ? `${quien} · ${tel}` : quien;
+  }
+  if (SE_PUEDE_ESPERAR.includes(estado)) {
+    return `${rangoBloque(bloque)} · ocupado — tocá para anotarte en la lista de espera`;
+  }
+  return `${rangoBloque(bloque)} · ${ETIQUETA_PUBLICA[estado]}`;
+}
+
 function FilaBloque({
   bloque,
-  jornadas,
-  porSlot,
-  modo,
-  onTocar,
+  children,
 }: {
   bloque: number;
-  jornadas: string[];
-  porSlot: Map<string, Reserva>;
-  modo: Modo;
-  onTocar: (jornada: string, bloque: number, estado: EstadoCelda) => void;
+  children: React.ReactNode;
 }) {
   return (
     <>
       <div className="flex flex-col justify-center pr-2 text-right">
         <span className="text-sm font-medium text-hueso">{horaInicio(bloque)}</span>
-        {esMadrugada(bloque) && (
-          <span className="text-[0.6rem] text-tenue">+1 día</span>
-        )}
+        {esMadrugada(bloque) && <span className="text-[0.6rem] text-tenue">+1 día</span>}
       </div>
-      {jornadas.map((jornada) => {
-        const reserva = porSlot.get(idSlot(jornada, bloque));
-        const estado = estadoDe(reserva, yaPaso(jornada, bloque));
-        const clickeable =
-          estado !== "pasado" && (modo === "encargado" || estado === "libre");
-        return (
-          <button
-            key={jornada}
-            type="button"
-            disabled={!clickeable}
-            onClick={() => onTocar(jornada, bloque, estado)}
-            title={
-              modo === "encargado" && reserva
-                ? `${reserva.nombre}${reserva.telefono ? ` · ${reserva.telefono}` : ""}`
-                : `${rangoBloque(bloque)} · ${ETIQUETA[estado]}`
-            }
-            className={`min-h-16 rounded-lg border px-2 py-2 text-xs transition-colors ${ESTILO[estado]} ${
-              clickeable ? "" : "cursor-default"
-            }`}
-          >
-            {modo === "encargado" && reserva ? (
-              <span className="line-clamp-2 leading-tight">{reserva.nombre}</span>
-            ) : (
-              ETIQUETA[estado]
-            )}
-          </button>
-        );
-      })}
+      {children}
     </>
   );
 }
@@ -306,7 +368,9 @@ function Controles({
 
       <div className="text-center">
         <p className="text-sm font-semibold text-hueso sm:text-base">{etiqueta}</p>
-        {!esActual && (
+        {esActual ? (
+          <p className="text-xs text-tenue">Semana actual</p>
+        ) : (
           <button
             type="button"
             onClick={onHoy}
@@ -315,15 +379,9 @@ function Controles({
             Volver a esta semana
           </button>
         )}
-        {esActual && <p className="text-xs text-tenue">Semana actual</p>}
       </div>
 
-      <button
-        type="button"
-        onClick={onAdelante}
-        disabled={!puedeAdelante}
-        className={boton}
-      >
+      <button type="button" onClick={onAdelante} disabled={!puedeAdelante} className={boton}>
         <span aria-hidden="true">→</span>
         <span className="sr-only">Semana siguiente</span>
       </button>
@@ -348,8 +406,8 @@ function Referencias({ modo }: { modo: Modo }) {
       ))}
       <span className="ml-auto">
         {modo === "encargado"
-          ? "Tocá un horario libre para bloquearlo, o uno bloqueado para liberarlo."
-          : "Cada turno dura 2 horas."}
+          ? "Tocá un horario libre para bloquearlo, o uno bloqueado para liberarlo. ↻ = turno fijo."
+          : "Cada turno dura 2 horas. Si está ocupado, podés anotarte en la lista de espera."}
       </span>
     </div>
   );

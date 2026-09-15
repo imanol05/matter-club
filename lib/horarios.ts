@@ -143,6 +143,11 @@ export function yaPaso(jornada: string, bloque: number, ahora = new Date()): boo
   return inicioDate(jornada, bloque).getTime() <= ahora.getTime();
 }
 
+/** Día de la semana de una jornada, con 0 = lunes (no 0 = domingo como Date). */
+export function diaSemana(jornada: string): number {
+  return (desdeClave(jornada).getDay() + 6) % 7;
+}
+
 /** "Vie 12 de septiembre" */
 export function etiquetaJornada(jornada: string): string {
   const d = desdeClave(jornada);
