@@ -25,7 +25,7 @@ const DIAS_A_MIRAR = 10;
  * enterarse.
  */
 export function ProximosLibres() {
-  const { listo, porSlot } = useReservas();
+  const { listo, ocupacionDe } = useReservas();
 
   // Se calcula en el render, no en un efecto: mientras `listo` es false lo que
   // se muestra es el esqueleto, así que el servidor nunca emite una hora.
@@ -38,7 +38,7 @@ export function ProximosLibres() {
     for (const bloque of bloques) {
       if (libres.length >= CUANTOS) break;
       if (yaPaso(jornada, bloque, ahora)) continue;
-      if (porSlot.has(idSlot(jornada, bloque))) continue;
+      if (ocupacionDe(jornada, bloque)) continue;
       libres.push({ jornada, bloque });
     }
     jornada = sumarDias(jornada, 1);

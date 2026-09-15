@@ -7,15 +7,35 @@ Tailwind 4 + TypeScript.
 npm run dev     # http://localhost:3000
 npm run build   # build de producción
 npx eslint .    # lint
+./deploy.sh     # compila y publica en GitHub Pages
 ```
+
+Publicado en <https://imanol05.github.io/matter-club/>
 
 ## Pantallas
 
-| Ruta      | Qué es                                                              |
-| --------- | ------------------------------------------------------------------- |
-| `/`       | Landing: presentación, características, tarifas, ubicación          |
-| `/turnos` | Turnero público: grilla semanal, se pide el turno y queda pendiente |
-| `/admin`  | Panel del encargado: confirmar/rechazar pedidos, bloquear horarios  |
+| Ruta      | Qué es                                                                   |
+| --------- | ------------------------------------------------------------------------ |
+| `/`       | Landing: presentación, características, tarifas, ubicación               |
+| `/turnos` | Turnero público: se pide turno, o se anota en lista de espera si no hay  |
+| `/admin`  | Panel del encargado: pedidos, lista de espera, turnos fijos y la agenda  |
+
+## Cómo funcionan los turnos fijos
+
+Un turno fijo ("los martes a las 20, todas las semanas") se guarda como **una
+regla**, no como una reserva por semana. La grilla lo expande al dibujarse.
+
+Si se guardaran expandidos habría que decidir hasta qué fecha generarlos, y dar
+de baja el turno obligaría a salir a borrar decenas de filas sueltas.
+
+Dos reglas de resolución que importan:
+
+- **Una reserva concreta le gana al fijo.** Si alguien ya tenía tomado ese día
+  puntual antes de que existiera la regla, el que estaba primero manda.
+- **Dar de baja marca `hasta`, no borra.** Las semanas pasadas tienen que seguir
+  mostrando el turno porque ese grupo efectivamente jugó. Y vale hasta hoy
+  inclusive: dar de baja los martes a la mañana no le saca la cancha al grupo
+  esa misma noche.
 
 ## Estado actual: es una demo
 
@@ -29,11 +49,13 @@ Cuando entre Supabase se reimplementa ese hook y los componentes no se tocan.
 
 ## Dos decisiones que conviene no romper
 
-**La jornada no es el día calendario.** La cancha abre 08:00 y cierra 02:00, así
-que el turno de las 00:00 del sábado pertenece a la *jornada del viernes* —
-para el encargado y para el que juega, eso es "la noche del viernes". Toda la
-traducción entre jornada+bloque e instante real está en `lib/horarios.ts`, junto
-con el offset de Argentina (UTC-3 fijo, sin horario de verano).
+**La grilla se arma por jornada, no por día calendario.** Hoy Matter cierra a
+las 24:00 y las dos cosas coinciden, pero si alguna vez estiran el horario
+pasada la medianoche, el turno de las 00:00 del sábado tiene que seguir
+apareciendo en la columna del viernes: para el encargado y para el que juega,
+eso es "la noche del viernes". La distinción está sostenida en `lib/horarios.ts`
+junto con el offset de Argentina (UTC-3 fijo, sin horario de verano), y no
+cuesta nada mantenerla.
 
 **El solapamiento de reservas se previene en la base, no en el código.** La demo
 hace un chequeo optimista en `lib/almacen.ts`, que alcanza para un solo
@@ -49,8 +71,11 @@ el mismo instante.
 - [ ] Verificar la hora de apertura (asumimos 08:00; el cierre a las 24:00 sí
       está confirmado)
 - [ ] Supabase: reemplazar `lib/almacen.ts` por consultas reales
-- [ ] Login del encargado (hoy `/admin` está abierto a cualquiera)
-- [ ] Aviso por WhatsApp al confirmar
-- [ ] Turnos fijos semanales gestionables desde el panel (hoy solo vienen del seed)
-- [ ] Lista de espera
+- [ ] **Login del encargado.** Hoy `/admin` está abierto, pero no es un agujero:
+      los datos viven en el navegador de cada uno, así que un curioso sólo ve su
+      propia copia. Deja de ser cierto el día que haya backend compartido — ahí
+      pasa a ser obligatorio y va *antes* que Supabase.
 - [ ] PWA instalable
+- [x] Aviso por WhatsApp al confirmar, rechazar y avisar de un horario liberado
+- [x] Turnos fijos semanales gestionables desde el panel
+- [x] Lista de espera
