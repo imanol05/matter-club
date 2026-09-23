@@ -12,7 +12,7 @@ export const CONTACTO = {
   whatsappUrl: "https://wa.me/5493513184824",
   instagram: "@matterclub.gp",
   instagramUrl: "https://www.instagram.com/matterclub.gp/",
-  horario: "08:00 a 24:00",
+  horario: "08:00 a 00:00",
   mapaUrl:
     "https://www.google.com/maps/search/?api=1&query=Av.+Bulnes+1756,+C%C3%B3rdoba",
 };
@@ -77,14 +77,14 @@ export const CARACTERISTICAS = [
   },
   {
     titulo: "Baños por sexo",
-    texto: "Baños separados para hombres y mujeres. Todavía no hay duchas.",
+    texto: "Baños separados para hombres y mujeres.",
     icono: "bano",
     proximamente: false,
   },
   {
-    titulo: "Quiosco",
+    titulo: "Kiosco, Buffet",
     texto: "Para el después del partido: bebidas y algo para picar.",
-    icono: "quiosco",
+    icono: "kiosco",
     proximamente: true,
   },
 ];

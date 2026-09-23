@@ -4,7 +4,7 @@
  * Dos cosas importantes que definen todo lo demás:
  *
  * 1. La grilla se arma por "jornada", no por día calendario: la jornada es la
- *    fecha en que ese día de cancha arrancó. Hoy Matter cierra a las 24:00 y
+ *    fecha en que ese día de cancha arrancó. Hoy Matter cierra a las 00:00 y
  *    entonces las dos cosas coinciden, pero si alguna vez estiran el horario
  *    pasada la medianoche, el turno de las 00:00 del sábado tiene que seguir
  *    apareciendo en la columna del viernes: para el encargado y para el que
@@ -23,7 +23,7 @@ export const OFFSET = "-03:00";
 export const HORA_APERTURA = 8;
 /** Duración de cada turno, en horas. */
 export const DURACION_HS = 2;
-/** Cantidad de turnos por jornada: 08:00 → 24:00. */
+/** Cantidad de turnos por jornada: 08:00 → 00:00. */
 export const BLOQUES_POR_JORNADA = 8;
 /** Con cuánta anticipación se puede reservar. */
 export const SEMANAS_A_FUTURO = 12;
@@ -102,11 +102,9 @@ export function horaInicio(bloque: number): string {
   return formatoHora(horaCruda(bloque));
 }
 
-/** "22:00". El cierre de medianoche se muestra "24:00" y no "00:00": para el
- *  final de un turno se lee como "cierra a las doce", no como el día siguiente. */
+/** "22:00". La medianoche se muestra como "00:00". */
 export function horaFin(bloque: number): string {
-  const fin = horaCruda(bloque) + DURACION_HS;
-  return fin === 24 ? "24:00" : formatoHora(fin);
+  return formatoHora(horaCruda(bloque) + DURACION_HS);
 }
 
 /** "20:00 – 22:00" */
