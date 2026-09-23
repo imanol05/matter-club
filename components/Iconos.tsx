@@ -24,7 +24,7 @@ const TRAZOS: Record<string, React.ReactNode> = {
       <path d="M16 8.5c-1.5 0-2.4 1-2.4 2.2L12.8 15h1.4l.3 5h3l.3-5h1.4l-.8-4.3c0-1.2-.9-2.2-2.4-2.2Z" />
     </>
   ),
-  quiosco: (
+  kiosco: (
     <>
       <path d="M4 9h16l-1 11H5L4 9Z" />
       <path d="M9 9V6a3 3 0 0 1 6 0v3" />

@@ -50,7 +50,7 @@ Cuando entre Supabase se reimplementa ese hook y los componentes no se tocan.
 ## Dos decisiones que conviene no romper
 
 **La grilla se arma por jornada, no por día calendario.** Hoy Matter cierra a
-las 24:00 y las dos cosas coinciden, pero si alguna vez estiran el horario
+las 00:00 y las dos cosas coinciden, pero si alguna vez estiran el horario
 pasada la medianoche, el turno de las 00:00 del sábado tiene que seguir
 apareciendo en la columna del viernes: para el encargado y para el que juega,
 eso es "la noche del viernes". La distinción está sostenida en `lib/horarios.ts`
@@ -68,7 +68,7 @@ el mismo instante.
 - [ ] **Confirmar la tarifa.** Los $5.600 por persona salen de un turno suelto,
       no los validó el club. Los dueños todavía tienen que definir el precio.
 - [ ] Fotos reales de Matter (hay marcadores de posición en `/` y en el mapa)
-- [ ] Verificar la hora de apertura (asumimos 08:00; el cierre a las 24:00 sí
+- [ ] Verificar la hora de apertura (asumimos 08:00; el cierre a medianoche sí
       está confirmado)
 - [ ] Supabase: reemplazar `lib/almacen.ts` por consultas reales
 - [ ] **Login del encargado.** Hoy `/admin` está abierto, pero no es un agujero:
