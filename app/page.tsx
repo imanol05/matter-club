@@ -4,7 +4,6 @@ import { NavBar } from "@/components/NavBar";
 import { Footer } from "@/components/Footer";
 import { Emblema } from "@/components/Marca";
 import { Icono } from "@/components/Iconos";
-import { ProximosLibres } from "@/components/ProximosLibres";
 import { CARACTERISTICAS, CONTACTO, MEDIOS_DE_PAGO, TARIFAS } from "@/lib/club";
 
 export default function Inicio() {
@@ -61,12 +60,6 @@ function Hero() {
           </div>
         </div>
 
-        <div className="mt-16">
-          <p className="mb-3 text-sm font-semibold text-hueso">
-            Próximos horarios libres
-          </p>
-          <ProximosLibres />
-        </div>
       </div>
     </section>
   );
@@ -114,17 +107,6 @@ function Cancha() {
           ))}
         </div>
 
-        {/* Marcadores de posición: se reemplazan por las fotos reales de Matter. */}
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          {["la cancha", "la cancha jugando", "la entrada"].map((t) => (
-            <div
-              key={t}
-              className="grid aspect-4/3 place-items-center rounded-xl border border-dashed border-borde bg-carbon/40 text-sm text-tenue/70"
-            >
-              Foto: {t}
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   );
@@ -204,10 +186,14 @@ function Ubicacion() {
             </div>
           </div>
 
-          {/* Marcador de posición: va el iframe de Google Maps con la dirección real. */}
-          <div className="grid aspect-video place-items-center rounded-xl border border-dashed border-borde bg-carbon/40 text-sm text-tenue/70">
-            Mapa de ubicación
-          </div>
+          {/* Embed de Google Maps por dirección: no necesita clave de API. */}
+          <iframe
+            title={`Mapa de ${CONTACTO.nombre}`}
+            src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACTO.direccion)}&output=embed`}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            className="aspect-video w-full rounded-xl border border-borde"
+          />
         </div>
       </div>
     </section>

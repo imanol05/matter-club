@@ -26,8 +26,8 @@ export function Footer() {
           <Link href="/#ubicacion" className="text-tenue transition-colors hover:text-hueso">
             Cómo llegar
           </Link>
-          <Link href="/admin" className="text-tenue transition-colors hover:text-hueso">
-            Panel del encargado
+          <Link href="/#tarifas" className="text-tenue transition-colors hover:text-hueso">
+            Tarifas
           </Link>
         </div>
 

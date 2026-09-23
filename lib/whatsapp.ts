@@ -37,6 +37,24 @@ function link(telefono: string, mensaje: string): string | null {
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
 }
 
+/**
+ * Consulta de disponibilidad, del cliente hacia el club.
+ *
+ * Es lo que reemplaza a la reserva mientras no haya base de datos: no podemos
+ * decirle a nadie si un horario está libre, pero sí dejarle el mensaje armado
+ * con el día y la hora exactos para que pregunte.
+ */
+export function consultaDeTurno(jornada: string, bloque: number): string {
+  return (
+    link(
+      CONTACTO.telefono,
+      `¡Hola! Quería consultar por la cancha el ` +
+        `${etiquetaJornada(jornada).toLowerCase()} de ${rangoBloque(bloque)}. ` +
+        `¿Está disponible?`,
+    ) ?? CONTACTO.whatsappUrl
+  );
+}
+
 export function avisoDeConfirmacion(
   nombre: string,
   jornada: string,
