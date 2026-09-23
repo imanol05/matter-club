@@ -18,9 +18,10 @@ export const CONTACTO = {
 };
 
 /**
- * A CONFIRMAR: el único dato real es el turno de 2 horas, y viene de un turno
- * suelto que jugó Imanol. El resto lo definen los dueños, así que va
- * "Consultar" en vez de un número inventado.
+ * Ningún precio está confirmado por el club, así que todos dicen "Consultar".
+ * Publicar una tarifa que después no es la que cobran es peor que no publicar
+ * ninguna: la gente llega con un número en la cabeza y se arma un lío en el
+ * mostrador. Cuando los dueños definan, se cambian acá.
  */
 type Tarifa = {
   titulo: string;
@@ -35,11 +36,10 @@ type Tarifa = {
 export const TARIFAS: Tarifa[] = [
   {
     titulo: "Turno de 2 horas",
-    precio: "$5.600",
-    unidad: "por persona",
-    detalle: "Valor del último turno jugado. Confirmalo antes de venir.",
+    precio: "Consultar",
+    unidad: "por WhatsApp, al toque",
+    detalle: "Escribinos y te pasamos el valor y la disponibilidad del día.",
     destacado: true,
-    etiqueta: "A confirmar",
   },
   {
     titulo: "Turno fijo semanal",

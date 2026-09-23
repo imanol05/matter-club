@@ -14,11 +14,29 @@ Publicado en <https://imanol05.github.io/matter-club/>
 
 ## Pantallas
 
-| Ruta      | Qué es                                                                   |
-| --------- | ------------------------------------------------------------------------ |
-| `/`       | Landing: presentación, características, tarifas, ubicación               |
-| `/turnos` | Turnero público: se pide turno, o se anota en lista de espera si no hay  |
-| `/admin`  | Panel del encargado: pedidos, lista de espera, turnos fijos y la agenda  |
+| Ruta      | Qué es                                                                  |
+| --------- | ----------------------------------------------------------------------- |
+| `/`       | Landing: presentación, características, tarifas, ubicación              |
+| `/turnos` | Selector de horario que termina en WhatsApp (ver abajo)                 |
+| `/admin`  | Panel del encargado — vista previa con datos de ejemplo, `noindex`      |
+
+## Por qué el turnero público no muestra disponibilidad
+
+Sin base de datos no hay forma de saber qué está ocupado. Pintar disponibilidad
+inventada sería peor que no mostrar nada: alguien vería libre un horario que
+está dado, o al revés, y terminaría en dos grupos peleando la cancha.
+
+Entonces `/turnos` usa `<TurneroConsulta />`, que muestra la semana y los
+bloques de 2 horas pero **no** dice qué está tomado: al elegir un horario abre
+WhatsApp con el día y la hora ya escritos. Honesto y encima le ahorra al cliente
+la parte tediosa de redactar.
+
+`<Turnero />` — el de verdad, con ocupación, turnos fijos y lista de espera — ya
+está hecho y andando, pero hoy sólo se usa en `/admin` contra datos de ejemplo.
+El día que entre Supabase se cambia el componente en `/turnos` y listo.
+
+Lo mismo vale para `<ProximosLibres />`, `<DialogoReserva />` y
+`<DialogoEspera />`: funcionan, están esperando backend.
 
 ## Cómo funcionan los turnos fijos
 
@@ -65,12 +83,14 @@ el mismo instante.
 
 ## Qué falta
 
-- [ ] **Confirmar la tarifa.** Los $5.600 por persona salen de un turno suelto,
-      no los validó el club. Los dueños todavía tienen que definir el precio.
-- [ ] Fotos reales de Matter (hay marcadores de posición en `/` y en el mapa)
+- [ ] **Supabase.** Es lo que desbloquea todo lo demás: sin backend compartido
+      la reserva de un cliente no le llega al dueño, y por eso el turnero
+      público es hoy un selector de consulta.
+- [ ] **Aviso al dueño cuando entra una reserva.** Depende de lo anterior.
+- [ ] **Confirmar la tarifa.** Hoy las tres dicen "Consultar".
+- [ ] Fotos reales de Matter
 - [ ] Verificar la hora de apertura (asumimos 08:00; el cierre a medianoche sí
       está confirmado)
-- [ ] Supabase: reemplazar `lib/almacen.ts` por consultas reales
 - [ ] **Login del encargado.** Hoy `/admin` está abierto, pero no es un agujero:
       los datos viven en el navegador de cada uno, así que un curioso sólo ve su
       propia copia. Deja de ser cierto el día que haya backend compartido — ahí

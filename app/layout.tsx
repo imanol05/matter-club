@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Outfit, Dancing_Script } from "next/font/google";
 
 import "./globals.css";
-import { AvisoDemo } from "@/components/AvisoDemo";
 
 const display = Outfit({
   variable: "--fuente-display",
@@ -17,13 +16,9 @@ const firma = Dancing_Script({
 });
 
 export const metadata: Metadata = {
-  title: "Matter Club · Reservá tu cancha de vóley",
+  title: "Matter · Cancha de vóley en Córdoba",
   description:
-    "Turnero online de Matter Club. Mirá los horarios libres de la semana y pedí tu turno de 2 horas sin llamar a nadie.",
-  // Mientras sea una demo con datos sin confirmar, que no la indexe Google:
-  // no queremos que una tarifa provisoria aparezca al buscar "Matter vóley".
-  // Se saca junto con <AvisoDemo /> cuando el club apruebe el contenido.
-  robots: { index: false, follow: false },
+    "Cancha de vóley techada en Av. Bulnes 1756, Córdoba. Turnos de 2 horas, todos los días de 08:00 a 00:00. Elegí tu horario y consultanos por WhatsApp.",
 };
 
 export const viewport: Viewport = {
@@ -36,10 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="es-AR"
       className={`${display.variable} ${firma.variable} h-full antialiased`}
     >
-      <body className="font-display flex min-h-full flex-col">
-        <AvisoDemo />
-        {children}
-      </body>
+      <body className="font-display flex min-h-full flex-col">{children}</body>
     </html>
   );
 }
