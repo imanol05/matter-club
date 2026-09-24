@@ -8,6 +8,7 @@ npm run dev     # http://localhost:3000
 npm run build   # build de producción
 npx eslint .    # lint
 ./deploy.sh     # compila y publica en GitHub Pages
+npm run apk     # genera matter-panel.apk para los dueños
 ```
 
 Publicado en <https://imanol05.github.io/matter-club/>
@@ -98,6 +99,21 @@ hace un chequeo optimista en `lib/almacen.ts`, que alcanza para un solo
 navegador. En producción va un constraint de exclusión de Postgres sobre el
 rango horario: es lo único que aguanta dos personas tocando el mismo horario en
 el mismo instante.
+
+## La app de los dueños
+
+`matter-panel.apk` es una cáscara de Capacitor que abre el sitio publicado
+directo en `/admin`. **No lleva el sitio adentro**: así, cuando se publica una
+actualización, a los dueños les llega sola y no hay que mandarles un APK nuevo.
+La contra es que necesita internet, cosa que un panel de reservas necesita
+igual.
+
+Se genera con `npm run apk` y se instala de costado (hay que permitir
+"orígenes desconocidos" una vez). Está firmado con la clave de depuración, que
+alcanza para repartirlo a mano; si algún día va a la Play Store hay que armar
+un keystore propio.
+
+Los clientes no usan esto: para ellos es la página web y listo.
 
 ## Qué falta
 
