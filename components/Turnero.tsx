@@ -36,9 +36,19 @@ function estadoDe(ocupacion: Ocupacion | undefined, pasado: boolean): EstadoCeld
   if (pasado) return "pasado";
   if (!ocupacion) return "libre";
   if (ocupacion.tipo === "fijo") return "fijo";
+  // El público sólo sabe que está tomado; por qué, no le corresponde.
+  if (ocupacion.tipo === "ocupado") return "confirmada";
   if (ocupacion.reserva.estado === "confirmada") return "confirmada";
   if (ocupacion.reserva.estado === "pendiente") return "pendiente";
   return "bloqueo";
+}
+
+/** El nombre de quien tiene el turno, si es que lo podemos ver. */
+function quienLoTiene(ocupacion: Ocupacion | undefined): string | null {
+  if (!ocupacion) return null;
+  if (ocupacion.tipo === "fijo") return ocupacion.fijo.nombre;
+  if (ocupacion.tipo === "reserva") return ocupacion.reserva.nombre;
+  return null;
 }
 
 /** Lo que ve un visitante: no le importa por qué está tomado, sólo que lo está. */
@@ -106,9 +116,9 @@ export function Turnero({ modo = "publico" }: { modo?: Modo }) {
     if (modo === "encargado") {
       const actual = ocupacionDe(jornada, bloque);
       if (estado === "libre") {
-        bloquear(jornada, bloque, "Bloqueado por el encargado");
+        void bloquear(jornada, bloque, "Bloqueado por el encargado");
       } else if (actual?.tipo === "reserva" && actual.reserva.estado === "bloqueo") {
-        eliminar(actual.reserva.id);
+        void eliminar(actual.reserva.id);
       }
       return;
     }
@@ -127,8 +137,8 @@ export function Turnero({ modo = "publico" }: { modo?: Modo }) {
     estado: EstadoCelda,
     ocupacion: Ocupacion | undefined,
   ): string => {
-    if (modo !== "encargado" || !ocupacion) return ETIQUETA_PUBLICA[estado];
-    return ocupacion.tipo === "fijo" ? ocupacion.fijo.nombre : ocupacion.reserva.nombre;
+    if (modo !== "encargado") return ETIQUETA_PUBLICA[estado];
+    return quienLoTiene(ocupacion) ?? ETIQUETA_PUBLICA[estado];
   };
 
   return (
@@ -307,14 +317,11 @@ function tituloCelda(
   ocupacion: Ocupacion | undefined,
   bloque: number,
 ): string {
-  if (modo === "encargado" && ocupacion) {
-    const quien =
-      ocupacion.tipo === "fijo"
-        ? `${ocupacion.fijo.nombre} · turno fijo`
-        : ocupacion.reserva.nombre;
-    const tel =
-      ocupacion.tipo === "fijo" ? ocupacion.fijo.telefono : ocupacion.reserva.telefono;
-    return tel ? `${quien} · ${tel}` : quien;
+  if (modo === "encargado" && ocupacion && ocupacion.tipo !== "ocupado") {
+    const esFijo = ocupacion.tipo === "fijo";
+    const datos = esFijo ? ocupacion.fijo : ocupacion.reserva;
+    const quien = esFijo ? `${datos.nombre} · turno fijo` : datos.nombre;
+    return datos.telefono ? `${quien} · ${datos.telefono}` : quien;
   }
   if (SE_PUEDE_ESPERAR.includes(estado)) {
     return `${rangoBloque(bloque)} · ocupado — tocá para anotarte en la lista de espera`;

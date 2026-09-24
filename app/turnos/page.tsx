@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 
 import { NavBar } from "@/components/NavBar";
 import { Footer } from "@/components/Footer";
-import { TurneroConsulta } from "@/components/TurneroConsulta";
+import { Turnero } from "@/components/Turnero";
 import { CONTACTO } from "@/lib/club";
 
 export const metadata: Metadata = {
   title: "Turnos · Matter",
   description:
-    "Elegí el día y el horario que querés en Matter y consultá disponibilidad por WhatsApp. Turnos de 2 horas.",
+    "Mirá los horarios libres de la semana en Matter y pedí tu turno de 2 horas sin llamar a nadie.",
 };
 
 export default function PaginaTurnos() {
@@ -22,13 +22,13 @@ export default function PaginaTurnos() {
             Elegí tu horario
           </h1>
           <p className="mt-3 max-w-2xl leading-relaxed text-tenue">
-            Marcá el día y la hora que te sirven y te armamos el mensaje para
-            consultar disponibilidad. Abrimos todos los días de {CONTACTO.horario} y
-            cada turno dura 2 horas.
+            Tocá cualquier horario libre y pedilo. No hace falta llamar ni esperar
+            respuesta para saber si hay lugar: lo que ves acá es lo que hay.
+            Abrimos todos los días de {CONTACTO.horario}.
           </p>
         </div>
 
-        <TurneroConsulta />
+        <Turnero />
       </main>
       <Footer />
     </>

@@ -21,6 +21,7 @@ export function DialogoReserva({
   const [nota, setNota] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviado, setEnviado] = useState(false);
+  const [mandando, setMandando] = useState(false);
   const primerCampo = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export function DialogoReserva({
     };
   }, [onCerrar]);
 
-  const enviar = (e: React.FormEvent) => {
+  const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (nombre.trim().length < 3) {
       setError("Decinos tu nombre para saber a quién le guardamos la cancha.");
@@ -48,7 +49,9 @@ export function DialogoReserva({
       setError("Necesitamos un teléfono válido para confirmarte por WhatsApp.");
       return;
     }
-    const r = solicitar({ jornada, bloque, nombre, telefono, nota });
+    setMandando(true);
+    const r = await solicitar({ jornada, bloque, nombre, telefono, nota });
+    setMandando(false);
     if (!r.ok) {
       setError(r.motivo ?? "No pudimos tomar el pedido.");
       return;
@@ -137,7 +140,7 @@ export function DialogoReserva({
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
                   inputMode="tel"
-                  placeholder="11 2345 6789"
+                  placeholder="351 234 5678"
                   className={campo}
                 />
               </label>
@@ -175,9 +178,10 @@ export function DialogoReserva({
               </button>
               <button
                 type="submit"
-                className="flex-1 rounded-lg bg-bordo px-4 py-3 font-semibold text-hueso transition-colors hover:bg-bordo-2"
+                disabled={mandando}
+                className="flex-1 rounded-lg bg-bordo px-4 py-3 font-semibold text-hueso transition-colors hover:bg-bordo-2 disabled:opacity-60"
               >
-                Pedir turno
+                {mandando ? "Pidiendo…" : "Pedir turno"}
               </button>
             </div>
           </form>

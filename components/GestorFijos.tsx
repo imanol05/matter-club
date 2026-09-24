@@ -26,31 +26,45 @@ export function GestorFijos() {
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
 
-  const enviar = (e: React.FormEvent) => {
+  const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (nombre.trim().length < 3) {
       setError("Poné el nombre del grupo o equipo.");
       return;
     }
-    const yaExiste = fijosVigentes.some(
-      (f) => f.diaSemana === diaSemana && f.bloque === bloque,
-    );
-    if (yaExiste) {
+    // Atajo para no ir hasta la base por algo que ya sabemos. El que decide de
+    // verdad es el índice único de Postgres, que sí contempla el caso de dos
+    // encargados cargando el mismo horario a la vez.
+    if (fijosVigentes.some((f) => f.diaSemana === diaSemana && f.bloque === bloque)) {
       setError("Ya hay un turno fijo en ese día y horario.");
       return;
     }
-    crearFijo({
+
+    setGuardando(true);
+    const r = await crearFijo({
       diaSemana,
       bloque,
       nombre,
       telefono,
       desde: claveFecha(new Date()),
     });
+    setGuardando(false);
+
+    if (!r.ok) {
+      setError(r.motivo ?? "No pudimos crear el turno fijo.");
+      return;
+    }
     setNombre("");
     setTelefono("");
     setError(null);
     setAbierto(false);
+  };
+
+  const darDeBaja = async (id: string) => {
+    const r = await darDeBajaFijo(id);
+    if (!r.ok) setError(r.motivo ?? "No pudimos dar de baja el turno.");
   };
 
   const campo =
@@ -143,9 +157,10 @@ export function GestorFijos() {
 
           <button
             type="submit"
-            className="mt-4 w-full rounded-lg bg-bordo px-4 py-2.5 text-sm font-semibold text-hueso transition-colors hover:bg-bordo-2 sm:w-auto"
+            disabled={guardando}
+            className="mt-4 w-full rounded-lg bg-bordo px-4 py-2.5 text-sm font-semibold text-hueso transition-colors hover:bg-bordo-2 disabled:opacity-60 sm:w-auto"
           >
-            Crear turno fijo
+            {guardando ? "Creando…" : "Crear turno fijo"}
           </button>
         </form>
       )}
@@ -173,7 +188,7 @@ export function GestorFijos() {
               </div>
               <button
                 type="button"
-                onClick={() => darDeBajaFijo(f.id)}
+                onClick={() => void darDeBaja(f.id)}
                 title="El turno de hoy se respeta; deja de repetirse a partir de mañana. Las semanas pasadas no se tocan."
                 className="shrink-0 rounded-lg border border-borde px-3 py-2 text-xs text-tenue transition-colors hover:border-bordo hover:text-hueso"
               >

@@ -132,6 +132,40 @@ export function inicioDate(jornada: string, bloque: number): Date {
   return new Date(inicioISO(jornada, bloque));
 }
 
+export function finISO(jornada: string, bloque: number): string {
+  const cruda = horaCruda(bloque) + DURACION_HS;
+  const fechaReal = cruda >= 24 ? sumarDias(jornada, 1) : jornada;
+  return `${fechaReal}T${String(cruda % 24).padStart(2, "0")}:00:00${OFFSET}`;
+}
+
+/**
+ * El camino de vuelta: de un instante guardado en la base a la celda de la
+ * grilla que le corresponde.
+ *
+ * Postgres devuelve los timestamptz normalizados a UTC, así que no alcanza con
+ * leer la hora: hay que traerla a hora argentina primero. Correr la fecha tres
+ * horas para atrás y después leer los componentes UTC da la hora de pared de
+ * acá sin depender de la zona horaria de la máquina que esté corriendo esto —
+ * que puede ser el celular de alguien de viaje.
+ */
+export function desdeInicio(iso: string): { jornada: string; bloque: number } {
+  const corrida = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000);
+  const anio = corrida.getUTCFullYear();
+  const mes = String(corrida.getUTCMonth() + 1).padStart(2, "0");
+  const dia = String(corrida.getUTCDate()).padStart(2, "0");
+  const hora = corrida.getUTCHours();
+
+  // Antes de la apertura significa que es la madrugada de la jornada anterior.
+  const esDeLaJornadaPrevia = hora < HORA_APERTURA;
+  const fecha = `${anio}-${mes}-${dia}`;
+  const horaDeGrilla = esDeLaJornadaPrevia ? hora + 24 : hora;
+
+  return {
+    jornada: esDeLaJornadaPrevia ? sumarDias(fecha, -1) : fecha,
+    bloque: Math.round((horaDeGrilla - HORA_APERTURA) / DURACION_HS),
+  };
+}
+
 /** Identificador estable de una celda de la grilla. */
 export function idSlot(jornada: string, bloque: number): string {
   return `${jornada}#${bloque}`;

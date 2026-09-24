@@ -25,6 +25,7 @@ export function DialogoEspera({
   const [telefono, setTelefono] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [anotado, setAnotado] = useState(false);
+  const [mandando, setMandando] = useState(false);
   const primerCampo = useRef<HTMLInputElement>(null);
 
   const delante = contarEsperas(jornada, bloque);
@@ -43,7 +44,7 @@ export function DialogoEspera({
     };
   }, [onCerrar]);
 
-  const enviar = (e: React.FormEvent) => {
+  const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (nombre.trim().length < 3) {
       setError("Decinos tu nombre para poder avisarte.");
@@ -53,7 +54,13 @@ export function DialogoEspera({
       setError("Necesitamos un teléfono válido para avisarte por WhatsApp.");
       return;
     }
-    anotarEnEspera({ jornada, bloque, nombre, telefono });
+    setMandando(true);
+    const r = await anotarEnEspera({ jornada, bloque, nombre, telefono });
+    setMandando(false);
+    if (!r.ok) {
+      setError(r.motivo ?? "No pudimos anotarte.");
+      return;
+    }
     setError(null);
     setAnotado(true);
   };
@@ -164,9 +171,10 @@ export function DialogoEspera({
               </button>
               <button
                 type="submit"
-                className="flex-1 rounded-lg bg-marino px-4 py-3 font-semibold text-hueso transition-colors hover:bg-marino-2"
+                disabled={mandando}
+                className="flex-1 rounded-lg bg-marino px-4 py-3 font-semibold text-hueso transition-colors hover:bg-marino-2 disabled:opacity-60"
               >
-                Avisame si se libera
+                {mandando ? "Anotando…" : "Avisame si se libera"}
               </button>
             </div>
           </form>
