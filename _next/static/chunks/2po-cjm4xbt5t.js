@@ -1,0 +1,1 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,36171,t=>{t.q("/matter-club/_next/static/media/logo.1qofdksvwe5k-.png")}]);
