@@ -10,6 +10,11 @@ import type { MetadataRoute } from "next";
  */
 const base = process.env.PAGES === "1" ? "/matter-club" : "";
 
+// El manifiesto es un Route Handler, y la exportación estática necesita que se
+// diga explícitamente que no depende del pedido. Sin esto `npm run build:pages`
+// falla, aunque `npm run build` pase sin chistar.
+export const dynamic = "force-static";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Matter · Cancha de vóley",
