@@ -32,7 +32,8 @@ let ok = 0;
 let mal = 0;
 const check = (nombre, paso, detalle = "") => {
   console.log(`  ${paso ? "✓" : "✗"} ${nombre}${detalle ? ` — ${detalle}` : ""}`);
-  paso ? ok++ : mal++;
+  if (paso) ok++;
+  else mal++;
 };
 
 const enHoras = (h) => new Date(Date.now() + h * 3600_000).toISOString();
