@@ -15,10 +15,20 @@ const firma = Dancing_Script({
   weight: ["700"],
 });
 
+const base = process.env.PAGES === "1" ? "/matter-club" : "";
+
 export const metadata: Metadata = {
   title: "Matter · Cancha de vóley en Córdoba",
   description:
-    "Cancha de vóley techada en Av. Bulnes 1756, Córdoba. Turnos de 2 horas, todos los días de 08:00 a 00:00. Elegí tu horario y consultanos por WhatsApp.",
+    "Cancha de vóley techada en Av. Bulnes 1756, Córdoba. Turnos de 2 horas, todos los días de 08:00 a 00:00. Mirá los horarios libres y pedí el tuyo.",
+  appleWebApp: {
+    title: "Matter",
+    capable: true,
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: `${base}/apple-touch-icon.png`,
+  },
 };
 
 export const viewport: Viewport = {

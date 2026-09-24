@@ -56,7 +56,7 @@ function Hero() {
           </div>
 
           <div className="shrink-0">
-            <Emblema className="size-56 sm:size-72" />
+            <Emblema className="w-56 sm:w-72" />
           </div>
         </div>
 
