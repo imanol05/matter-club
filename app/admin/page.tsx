@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { NavBar } from "@/components/NavBar";
 import { Footer } from "@/components/Footer";
 import { Panel } from "@/components/Panel";
+import { PuertaEncargado } from "@/components/PuertaEncargado";
 
 export const metadata: Metadata = {
   title: "Panel del encargado · Matter Club",
@@ -32,7 +33,9 @@ export default function PaginaAdmin() {
           </p>
         </div>
 
-        <Panel />
+        <PuertaEncargado>
+          <Panel />
+        </PuertaEncargado>
       </main>
       <Footer />
     </>
