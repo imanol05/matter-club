@@ -26,7 +26,7 @@ export function NavBar() {
           className="rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bordo-2"
         >
           <Marca />
-          <span className="sr-only">Matter Club — inicio</span>
+          <span className="sr-only">Matter Club — ir al inicio</span>
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
