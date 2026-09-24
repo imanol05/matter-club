@@ -1,26 +1,33 @@
 import type { NextConfig } from "next";
 
 /**
- * El sitio es 100% estático, así que para GitHub Pages se exporta a HTML plano.
+ * El sitio es 100% estático, así que se exporta a HTML plano y puede vivir en
+ * cualquier hosting que sirva archivos.
  *
- * Va detrás de una variable de entorno y no siempre activo porque Pages sirve
- * desde un subdirectorio (/matter-club), y ese prefijo rompería el `npm run dev`
- * local: habría que entrar a localhost:3000/matter-club en vez de la raíz.
+ * Son dos variables separadas a propósito, porque no siempre van juntas:
  *
- *   npm run dev           → desarrollo normal, en la raíz
- *   npm run build:pages   → carpeta out/ lista para publicar
+ * - `ESTATICO=1` genera la carpeta out/.
+ * - `BASE_PATH` sólo hace falta cuando el sitio cuelga de un subdirectorio,
+ *   como en GitHub Pages (/matter-club). En Netlify o con dominio propio va en
+ *   la raíz y tiene que quedar vacío, o todos los enlaces apuntarían a una
+ *   carpeta que no existe.
+ *
+ *   npm run dev            → desarrollo, en la raíz
+ *   npm run build:pages    → para GitHub Pages, con el prefijo
+ *   npm run build:estatico → para Netlify o dominio propio, sin prefijo
  */
-const paraPages = process.env.PAGES === "1";
+export const basePath = process.env.BASE_PATH ?? "";
 
-const nextConfig: NextConfig = paraPages
-  ? {
-      output: "export",
-      basePath: "/matter-club",
-      // Genera turnos/index.html en vez de turnos.html: Pages no resuelve
-      // la ruta /turnos contra un archivo suelto.
-      trailingSlash: true,
-      images: { unoptimized: true },
-    }
-  : {};
+const nextConfig: NextConfig =
+  process.env.ESTATICO === "1"
+    ? {
+        output: "export",
+        basePath,
+        // Genera turnos/index.html en vez de turnos.html: los hostings
+        // estáticos no resuelven la ruta /turnos contra un archivo suelto.
+        trailingSlash: true,
+        images: { unoptimized: true },
+      }
+    : {};
 
 export default nextConfig;

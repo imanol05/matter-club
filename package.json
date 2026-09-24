@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "build:pages": "PAGES=1 next build && touch out/.nojekyll",
-    "apk": "npm run build:pages && npx cap sync android && cd android && ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleDebug --no-daemon && cd .. && cp android/app/build/outputs/apk/debug/app-debug.apk ./matter-panel.apk && echo \"APK listo: matter-panel.apk\""
+    "build:pages": "ESTATICO=1 BASE_PATH=/matter-club next build && touch out/.nojekyll",
+    "apk": "npm run build:pages && npx cap sync android && cd android && ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleDebug --no-daemon && cd .. && cp android/app/build/outputs/apk/debug/app-debug.apk ./matter-panel.apk && echo \"APK listo: matter-panel.apk\"",
+    "build:estatico": "ESTATICO=1 next build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.1",
