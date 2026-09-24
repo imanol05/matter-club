@@ -15,7 +15,9 @@ import type { CapacitorConfig } from "@capacitor/cli";
  */
 const config: CapacitorConfig = {
   appId: "com.matterclub.panel",
-  appName: "Matter Panel",
+  // Ojo: `cap sync` no reescribe el nombre una vez creado el proyecto nativo.
+  // Si se cambia acá, hay que tocar también android/app/src/main/res/values/strings.xml.
+  appName: "Matter",
   // Con `server.url` el contenido sale de internet, pero Capacitor igual exige
   // que esta carpeta exista. Se genera con `npm run build:pages`.
   webDir: "out",
