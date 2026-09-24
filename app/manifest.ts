@@ -8,10 +8,10 @@ import type { MetadataRoute } from "next";
  * sitio no vive en la raíz del dominio. Sin eso, el celular busca los íconos
  * en imanol05.github.io/icono-512.png y no los encuentra.
  */
-const base = process.env.PAGES === "1" ? "/matter-club" : "";
+import { BASE as base } from "@/lib/rutas";
 
 // El manifiesto es un Route Handler, y la exportación estática necesita que se
-// diga explícitamente que no depende del pedido. Sin esto `npm run build:pages`
+// diga explícitamente que no depende del pedido. Sin esto el build estático
 // falla, aunque `npm run build` pase sin chistar.
 export const dynamic = "force-static";
 

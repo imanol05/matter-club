@@ -15,7 +15,7 @@ const firma = Dancing_Script({
   weight: ["700"],
 });
 
-const base = process.env.PAGES === "1" ? "/matter-club" : "";
+import { BASE as base } from "@/lib/rutas";
 
 export const metadata: Metadata = {
   title: "Matter · Cancha de vóley en Córdoba",
