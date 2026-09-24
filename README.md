@@ -55,15 +55,33 @@ Dos reglas de resolución que importan:
   inclusive: dar de baja los martes a la mañana no le saca la cancha al grupo
   esa misma noche.
 
-## Estado actual: es una demo
+## Los datos son reales
 
-**No hay backend.** Los datos viven en `localStorage` del navegador y arrancan
-de una agenda de ejemplo (`lib/semilla.ts`) que se genera relativa a la semana
-actual, así la demo se ve igual de realista se abra el día que se abra. El botón
-"Reiniciar datos de ejemplo" del panel vuelve todo a cero.
+Backend en Supabase (proyecto `wabbodvqlzmuanrsuzfn`). Credenciales en
+`.env.local`, que no va al repo — copiá `.env.local.example`. Las migraciones
+están en `supabase/migraciones/` y se corren pegándolas en el SQL Editor.
 
-La frontera está en `lib/store.tsx`: es lo único que consumen las pantallas.
-Cuando entre Supabase se reimplementa ese hook y los componentes no se tocan.
+Las pantallas sólo hablan con `lib/store.tsx`; toda la conversación con la base
+pasa por `lib/almacen.ts`.
+
+### Hay dos vistas del mismo dato
+
+El **público** sólo puede leer las vistas `disponibilidad` y `fijos_publicos`,
+que dicen qué rangos están tomados y nada más. No hay forma de que averigüe de
+quién es cada turno, ni forzando la pantalla: se lo impiden las políticas RLS,
+no el código del navegador. Por eso el tipo `Ocupacion` tiene el caso
+`"ocupado"` a secas.
+
+El **encargado** lee las tablas completas, con nombres y teléfonos. Para eso no
+alcanza con tener sesión: hay que estar en la tabla `encargados`.
+
+### Scripts de verificación
+
+```bash
+node verificar-backend.mjs     # esquema, permisos y el constraint
+node verificar-privacidad.mjs  # que el público no pueda sacar datos personales
+node verificar-registro.mjs    # que nadie pueda crearse cuenta solo
+```
 
 ## Dos decisiones que conviene no romper
 
@@ -83,10 +101,8 @@ el mismo instante.
 
 ## Qué falta
 
-- [ ] **Supabase.** Es lo que desbloquea todo lo demás: sin backend compartido
-      la reserva de un cliente no le llega al dueño, y por eso el turnero
-      público es hoy un selector de consulta.
-- [ ] **Aviso al dueño cuando entra una reserva.** Depende de lo anterior.
+- [ ] **Aviso al dueño por Telegram cuando entra una reserva.** El token del bot
+      no puede vivir en el código del sitio, así que va en una Edge Function.
 - [ ] **Confirmar la tarifa.** Hoy las tres dicen "Consultar".
 - [ ] Fotos reales de Matter
 - [ ] Verificar la hora de apertura (asumimos 08:00; el cierre a medianoche sí

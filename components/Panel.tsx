@@ -20,16 +20,8 @@ import { Turnero } from "./Turnero";
 import { GestorFijos } from "./GestorFijos";
 
 export function Panel() {
-  const {
-    listo,
-    pendientes,
-    esperas,
-    ocupacionDe,
-    confirmar,
-    rechazar,
-    quitarEspera,
-    reiniciar,
-  } = useReservas();
+  const { listo, error, pendientes, esperas, ocupacionDe, confirmar, rechazar, quitarEspera } =
+    useReservas();
 
   // Ocupación de la semana en curso: el número que el encargado mira primero.
   const ocupacion = useMemo(() => {
@@ -53,6 +45,15 @@ export function Panel() {
 
   return (
     <div className="flex flex-col gap-10">
+      {error && (
+        <p
+          role="alert"
+          className="rounded-xl border border-bordo/50 bg-bordo/15 px-4 py-3 text-sm text-hueso"
+        >
+          {error}
+        </p>
+      )}
+
       <section className="grid gap-3 sm:grid-cols-3">
         <Tarjeta
           valor={listo ? String(pendientes.length) : "—"}
@@ -225,20 +226,6 @@ export function Panel() {
         <Turnero modo="encargado" />
       </section>
 
-      <section className="rounded-xl border border-borde bg-carbon/50 p-4">
-        <p className="text-sm text-tenue">
-          <strong className="text-hueso">Esto es una demo.</strong> Los datos viven
-          en este navegador, no hay servidor todavía. Si querés volver a la agenda
-          de ejemplo original:
-        </p>
-        <button
-          type="button"
-          onClick={reiniciar}
-          className="mt-3 rounded-lg border border-borde px-4 py-2 text-sm text-tenue transition-colors hover:border-bordo-2 hover:text-hueso"
-        >
-          Reiniciar datos de ejemplo
-        </button>
-      </section>
     </div>
   );
 }

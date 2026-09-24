@@ -18,6 +18,7 @@ import { useSyncExternalStore } from "react";
 import type { User } from "@supabase/supabase-js";
 
 import { supabase } from "./supabase";
+import { recargar } from "./almacen";
 
 export type EstadoSesion = {
   /** true hasta que sabemos si hay sesión o no. */
@@ -73,6 +74,9 @@ function arrancar() {
 
   supabase.auth.onAuthStateChange((_evento, sesion) => {
     void revisarPermiso(sesion?.user ?? null);
+    // Lo que se puede leer cambia con la sesión: al entrar aparecen los
+    // nombres y teléfonos, al salir vuelve a verse sólo la disponibilidad.
+    void recargar();
   });
 }
 

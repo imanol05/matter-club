@@ -59,10 +59,17 @@ export type Espera = {
   creada: string;
 };
 
-/** Quién tiene tomado un bloque de la grilla, y por qué. */
+/**
+ * Quién tiene tomado un bloque de la grilla, y por qué.
+ *
+ * El caso "ocupado" es el que ve el público: la base le deja saber que el
+ * horario está dado, pero no de quién es. Los nombres y teléfonos de los
+ * clientes del club no son información pública.
+ */
 export type Ocupacion =
   | { tipo: "reserva"; reserva: Reserva }
-  | { tipo: "fijo"; fijo: TurnoFijo };
+  | { tipo: "fijo"; fijo: TurnoFijo }
+  | { tipo: "ocupado" };
 
 export type NuevaSolicitud = {
   jornada: string;

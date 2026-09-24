@@ -25,12 +25,6 @@ export default function PaginaAdmin() {
             Todo lo que hoy se resuelve por WhatsApp, en una sola pantalla: quién
             pidió qué, qué falta confirmar y cómo viene la semana.
           </p>
-          <p className="mt-4 max-w-2xl rounded-xl border border-marino-2/40 bg-marino/15 px-4 py-3 text-sm leading-relaxed text-tenue">
-            <strong className="text-hueso">Vista previa.</strong> Esta pantalla
-            funciona con una agenda de ejemplo y los datos viven sólo en este
-            navegador. Sirve para ver cómo va a trabajar el encargado; todavía no
-            está conectada a las reservas reales.
-          </p>
         </div>
 
         <PuertaEncargado>
