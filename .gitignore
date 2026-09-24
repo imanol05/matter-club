@@ -41,3 +41,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Capacitor: el proyecto Android SÍ va al repo — tiene los íconos del club y la
+# configuración, que se perderían al regenerarlo. Sólo se excluye lo que produce
+# la compilación.
+/android/build/
+/android/app/build/
+/android/.gradle/
+/android/local.properties
+/android/app/src/main/assets/public/
+/android/capacitor-cordova-android-plugins/
+
+# El APK compilado no va al repo: son 4,6 MB y se regenera con `npm run apk`
+*.apk
