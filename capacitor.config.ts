@@ -19,10 +19,13 @@ const config: CapacitorConfig = {
   // Si se cambia acá, hay que tocar también android/app/src/main/res/values/strings.xml.
   appName: "Matter",
   // Con `server.url` el contenido sale de internet, pero Capacitor igual exige
-  // que esta carpeta exista. Se genera con `npm run build:pages`.
+  // que esta carpeta exista. Se genera con `npm run build:estatico`.
   webDir: "out",
   server: {
-    url: "https://imanol05.github.io/matter-club/admin/",
+    // Va SIN barra final a propósito. El sitio se exporta con trailingSlash,
+    // pero Netlify redirige /admin/ a /admin con un 308: apuntar a la versión
+    // con barra hace que la app pague ese salto cada vez que arranca.
+    url: "https://matterclub.netlify.app/admin",
     // Sin texto plano: el sitio es HTTPS y no hay motivo para permitir HTTP.
     cleartext: false,
   },
