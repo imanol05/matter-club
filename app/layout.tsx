@@ -15,8 +15,6 @@ const firma = Dancing_Script({
   weight: ["700"],
 });
 
-import { BASE as base } from "@/lib/rutas";
-
 export const metadata: Metadata = {
   title: "Matter · Cancha de vóley en Córdoba",
   description:
@@ -27,7 +25,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   icons: {
-    apple: `${base}/apple-touch-icon.png`,
+    apple: "/apple-touch-icon.png",
   },
 };
 

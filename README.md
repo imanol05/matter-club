@@ -4,40 +4,32 @@ Web + turnero para reservar la cancha de vóley. Next.js 16 (App Router) +
 Tailwind 4 + TypeScript.
 
 ```bash
-npm run dev     # http://localhost:3000
-npm run build   # build de producción
-npx eslint .    # lint
-./deploy.sh     # compila y publica en GitHub Pages
-npm run apk     # genera matter-panel.apk para los dueños
+npm run dev            # http://localhost:3000
+npm run build:estatico # lo que se publica (genera out/)
+npx eslint .           # lint
+npm run apk            # genera matter-panel.apk para los dueños
 ```
 
-Publicado en <https://imanol05.github.io/matter-club/>
+Publicado en <https://matterclub.netlify.app/>
+
+**Se publica con `git push` y nada más**: Netlify compila solo con cada push a
+`main`. No hay script de deploy ni paso manual. Hubo un tiempo en que el sitio
+también vivía en GitHub Pages y se subía con un `deploy.sh`, pero tener dos
+sitios que se actualizaban distinto terminó en lo esperable —uno quedó viejo—
+así que quedó sólo Netlify.
 
 ## Pantallas
 
-| Ruta      | Qué es                                                                  |
-| --------- | ----------------------------------------------------------------------- |
-| `/`       | Landing: presentación, características, tarifas, ubicación              |
-| `/turnos` | Selector de horario que termina en WhatsApp (ver abajo)                 |
-| `/admin`  | Panel del encargado — vista previa con datos de ejemplo, `noindex`      |
+| Ruta      | Qué es                                                             |
+| --------- | ------------------------------------------------------------------ |
+| `/`       | Landing: presentación, características, tarifas, ubicación         |
+| `/turnos` | Turnero con la ocupación real; el cliente pide y el dueño confirma |
+| `/admin`  | Panel del encargado, detrás de login y con `noindex`               |
 
-## Por qué el turnero público no muestra disponibilidad
-
-Sin base de datos no hay forma de saber qué está ocupado. Pintar disponibilidad
-inventada sería peor que no mostrar nada: alguien vería libre un horario que
-está dado, o al revés, y terminaría en dos grupos peleando la cancha.
-
-Entonces `/turnos` usa `<TurneroConsulta />`, que muestra la semana y los
-bloques de 2 horas pero **no** dice qué está tomado: al elegir un horario abre
-WhatsApp con el día y la hora ya escritos. Honesto y encima le ahorra al cliente
-la parte tediosa de redactar.
-
-`<Turnero />` — el de verdad, con ocupación, turnos fijos y lista de espera — ya
-está hecho y andando, pero hoy sólo se usa en `/admin` contra datos de ejemplo.
-El día que entre Supabase se cambia el componente en `/turnos` y listo.
-
-Lo mismo vale para `<ProximosLibres />`, `<DialogoReserva />` y
-`<DialogoEspera />`: funcionan, están esperando backend.
+`components/TurneroConsulta.tsx` quedó sin uso: era el selector que abría
+WhatsApp cuando todavía no había base de datos y no se podía mostrar
+disponibilidad real. Se conserva por si alguna vez hace falta un modo "sin
+backend".
 
 ## Cómo funcionan los turnos fijos
 
@@ -94,11 +86,12 @@ eso es "la noche del viernes". La distinción está sostenida en `lib/horarios.t
 junto con el offset de Argentina (UTC-3 fijo, sin horario de verano), y no
 cuesta nada mantenerla.
 
-**El solapamiento de reservas se previene en la base, no en el código.** La demo
-hace un chequeo optimista en `lib/almacen.ts`, que alcanza para un solo
-navegador. En producción va un constraint de exclusión de Postgres sobre el
-rango horario: es lo único que aguanta dos personas tocando el mismo horario en
-el mismo instante.
+**El solapamiento de reservas se previene en la base, no en el código.**
+`lib/almacen.ts` no chequea disponibilidad antes de insertar, y es a propósito:
+entre preguntar y escribir, otro puede haber reservado. El que decide es el
+constraint de exclusión de Postgres sobre el rango horario, que no tiene esa
+ventana. Es lo único que aguanta dos personas tocando el mismo horario en el
+mismo instante.
 
 ## La app de los dueños
 
@@ -115,19 +108,39 @@ un keystore propio.
 
 Los clientes no usan esto: para ellos es la página web y listo.
 
+## El aviso al dueño va por Telegram
+
+Cuando entra una reserva, un disparador de la base le manda un mensaje al dueño
+(`supabase/migraciones/003_aviso_telegram.sql`). El token del bot vive cifrado
+en Vault, nunca en el código del sitio: cualquiera puede leer el JavaScript que
+se descarga, y con ese token se pueden mandar mensajes haciéndose pasar por el
+bot.
+
+Va como disparador y no como código del navegador para que se dispare siempre,
+sin depender de que el cliente no cierre la pestaña. Y si los secretos no están
+cargados **no falla el insert**: perder el aviso es molesto, perder la reserva
+del cliente es grave.
+
+Al cliente se le avisa por WhatsApp, con el dueño apretando enviar. Automatizar
+ese lado exigiría cuenta de empresa verificada, plantillas aprobadas y pago por
+conversación.
+
 ## Qué falta
 
-- [ ] **Aviso al dueño por Telegram cuando entra una reserva.** El token del bot
-      no puede vivir en el código del sitio, así que va en una Edge Function.
-- [ ] **Confirmar la tarifa.** Hoy las tres dicen "Consultar".
-- [ ] Fotos reales de Matter
+- [ ] **Confirmar el precio del turno fijo y de eventos.** El turno de 2 horas
+      ya está en $5.555 por persona; esos dos siguen en "Consultar".
 - [ ] Verificar la hora de apertura (asumimos 08:00; el cierre a medianoche sí
       está confirmado)
-- [ ] **Login del encargado.** Hoy `/admin` está abierto, pero no es un agujero:
-      los datos viven en el navegador de cada uno, así que un curioso sólo ve su
-      propia copia. Deja de ser cierto el día que haya backend compartido — ahí
-      pasa a ser obligatorio y va *antes* que Supabase.
-- [ ] PWA instalable
+- [ ] **Decidir el plan de Supabase.** El gratuito pausa el proyecto tras una
+      semana sin tráfico a la base, y ya pasó una vez: el hostname deja de
+      resolver y el turnero queda muerto sin avisarle a nadie.
+- [ ] Pantalla para cambiar la contraseña desde el panel. Hoy sólo se puede
+      desde el dashboard de Supabase.
+- [x] Turnero público con disponibilidad real
+- [x] Login del encargado contra la tabla `encargados`
+- [x] Aviso al dueño por Telegram cuando entra una reserva
 - [x] Aviso por WhatsApp al confirmar, rechazar y avisar de un horario liberado
 - [x] Turnos fijos semanales gestionables desde el panel
 - [x] Lista de espera
+- [x] PWA instalable
+- [x] Fotos reales de Matter
