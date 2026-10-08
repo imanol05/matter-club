@@ -5,7 +5,18 @@
  */
 export const CANCHA_ID = "matter-1";
 
-export type EstadoReserva = "pendiente" | "confirmada" | "rechazada" | "bloqueo";
+/**
+ * `vencida` la pone sola la base, no la app: un pedido que nadie respondió en
+ * 48 horas —o cuyo turno ya empezó— deja de ocupar el horario. Es un estado
+ * aparte de `rechazada` porque no es lo mismo mirarlo y decir que no que
+ * dejarlo pasar; lo segundo significa que el club está perdiendo clientes.
+ */
+export type EstadoReserva =
+  | "pendiente"
+  | "confirmada"
+  | "rechazada"
+  | "bloqueo"
+  | "vencida";
 
 /** Una reserva ocupa exactamente un bloque de la grilla, un día concreto. */
 export type Reserva = {
