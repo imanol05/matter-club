@@ -1,10 +1,22 @@
+import Image, { type StaticImageData } from "next/image";
 import Link from "next/link";
 
 import { NavBar } from "@/components/NavBar";
 import { Footer } from "@/components/Footer";
 import { Emblema } from "@/components/Marca";
 import { Icono } from "@/components/Iconos";
-import { CARACTERISTICAS, CONTACTO, MEDIOS_DE_PAGO, TARIFAS } from "@/lib/club";
+import {
+  CARACTERISTICAS,
+  CONTACTO,
+  MEDIOS_DE_PAGO,
+  PRECIOS_VIGENTES_DESDE,
+  TARIFAS,
+} from "@/lib/club";
+
+// Fotos reales de la cancha, sacadas por el club. Van importadas y no por ruta
+// para que Next saque solo el tamaño y el desenfoque de carga.
+import cancha1 from "@/public/cancha-1.jpg";
+import cancha2 from "@/public/cancha-2.jpg";
 
 export default function Inicio() {
   return (
@@ -80,7 +92,19 @@ function Cancha() {
           clima. Venís con tu grupo y jugás.
         </p>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          <Foto
+            src={cancha1}
+            alt="La cancha de Matter desde el fondo: la red armada, el mural del club en la pared y el piso azul y rojo."
+            prioritaria
+          />
+          <Foto
+            src={cancha2}
+            alt="La cancha de Matter de costado, con el techo a dos aguas y las luces colgantes encendidas."
+          />
+        </div>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {CARACTERISTICAS.map((c) => (
             <div
               key={c.titulo}
@@ -109,6 +133,37 @@ function Cancha() {
 
       </div>
     </section>
+  );
+}
+
+/**
+ * Foto de la cancha dentro de un marco.
+ *
+ * El recorte lo hace el CSS y no el archivo: las fotos vienen en 4:3 y acá se
+ * fuerza esa misma proporción para que las dos ocupen igual y la fila quede
+ * pareja, sin importar cuál cargue primero.
+ *
+ * `prioritaria` va sólo en la primera: es la que suele entrar en pantalla al
+ * abrir la página, así que conviene que no espere a la carga diferida.
+ */
+function Foto({
+  src,
+  alt,
+  prioritaria = false,
+}: {
+  src: StaticImageData;
+  alt: string;
+  prioritaria?: boolean;
+}) {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      placeholder="blur"
+      priority={prioritaria}
+      sizes="(min-width: 640px) 50vw, 100vw"
+      className="aspect-4/3 w-full rounded-xl border border-borde object-cover"
+    />
   );
 }
 
@@ -149,6 +204,7 @@ function Tarifas() {
 
         <p className="mt-6 text-sm text-tenue">
           {MEDIOS_DE_PAGO} No cobramos seña ni pedimos tarjeta para reservar.
+          Valores vigentes desde {PRECIOS_VIGENTES_DESDE}.
         </p>
       </div>
     </section>

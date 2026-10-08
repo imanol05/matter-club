@@ -18,10 +18,16 @@ export const CONTACTO = {
 };
 
 /**
- * Ningún precio está confirmado por el club, así que todos dicen "Consultar".
- * Publicar una tarifa que después no es la que cobran es peor que no publicar
- * ninguna: la gente llega con un número en la cabeza y se arma un lío en el
- * mostrador. Cuando los dueños definan, se cambian acá.
+ * El turno de 2 horas sale $5.555 por persona (confirmado por el club el
+ * 2026-10-08). Los otros dos siguen a convenir.
+ *
+ * El precio va a subir con el tiempo, así que se cambia acá y en ningún otro
+ * lado: la cifra no está escrita en el texto de las páginas justamente para
+ * que actualizarla sea cambiar una línea.
+ *
+ * Al lado del valor va la fecha desde cuándo rige. No es un detalle de diseño:
+ * si el cliente llega con un número viejo en la cabeza, la discusión en el
+ * mostrador la gana el que puede mostrar desde cuándo cambió.
  */
 type Tarifa = {
   titulo: string;
@@ -36,9 +42,10 @@ type Tarifa = {
 export const TARIFAS: Tarifa[] = [
   {
     titulo: "Turno de 2 horas",
-    precio: "Consultar",
-    unidad: "por WhatsApp, al toque",
-    detalle: "Escribinos y te pasamos el valor y la disponibilidad del día.",
+    precio: "$5.555",
+    unidad: "por persona",
+    detalle:
+      "Reservás la cancha completa y dividen entre los que juegan. Sin costo de cancha aparte.",
     destacado: true,
   },
   {
@@ -57,6 +64,12 @@ export const TARIFAS: Tarifa[] = [
     destacado: false,
   },
 ];
+
+/**
+ * Desde cuándo rige el precio de arriba. Se actualiza SIEMPRE junto con la
+ * cifra: una tarifa sin fecha no sirve para zanjar un reclamo.
+ */
+export const PRECIOS_VIGENTES_DESDE = "octubre de 2026";
 
 export const MEDIOS_DE_PAGO = "Efectivo o transferencia, en la cancha.";
 
