@@ -57,6 +57,146 @@ body {
   );
 }
 
+/* ───────────── Tablero de vóley ─────────────
+   Los festejos usan --equipo, el color del que hizo el punto. */
+
+.tablero-pop {
+  animation: tablero-pop 380ms cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+@keyframes tablero-pop {
+  0% { transform: scale(0.6); opacity: 0.2; }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.tablero-saque {
+  animation: tablero-giro 3s linear infinite;
+}
+@keyframes tablero-giro {
+  to { transform: rotate(360deg); }
+}
+
+.tablero-latido {
+  animation: tablero-latido 1s ease-in-out infinite;
+}
+@keyframes tablero-latido {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklab, var(--equipo) 70%, transparent); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 10px transparent; }
+}
+
+.tablero-ganador {
+  animation: tablero-brillo 1.6s ease-in-out infinite;
+}
+@keyframes tablero-brillo {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 60px 6px color-mix(in oklab, var(--equipo) 60%, transparent); }
+}
+
+.tablero-velo {
+  animation: tablero-aparece 220ms ease-out;
+}
+@keyframes tablero-aparece {
+  from { opacity: 0; }
+}
+
+.tablero-destello {
+  background: radial-gradient(circle at center, color-mix(in oklab, var(--equipo) 75%, transparent), color-mix(in oklab, var(--color-noche) 85%, transparent) 70%);
+  animation: tablero-destello 2.2s ease-out forwards;
+}
+@keyframes tablero-destello {
+  0% { opacity: 0; }
+  8% { opacity: 1; filter: brightness(1.8); }
+  25% { filter: brightness(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.tablero-sube {
+  animation: tablero-sube 600ms 250ms cubic-bezier(0.2, 1, 0.3, 1) both;
+}
+@keyframes tablero-sube {
+  from { opacity: 0; transform: translateY(30px); }
+}
+
+.tablero-golpe {
+  animation: tablero-golpe 700ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes tablero-golpe {
+  0% { opacity: 0; transform: scale(2.6); filter: blur(10px); }
+  60% { opacity: 1; transform: scale(0.94); filter: blur(0); }
+  100% { transform: scale(1); }
+}
+
+/* Ace: la pelota cruza como un misil y el texto entra de costado. */
+.tablero-ace {
+  animation:
+    tablero-ace 2.2s cubic-bezier(0.15, 1, 0.3, 1) forwards;
+}
+@keyframes tablero-ace {
+  0% { opacity: 0; transform: translateX(-120vw) skewX(-30deg); }
+  22% { opacity: 1; transform: translateX(3vw) skewX(12deg); }
+  32% { transform: translateX(0) skewX(-4deg); }
+  40% { transform: translateX(0) skewX(0); }
+  82% { opacity: 1; transform: translateX(0) scale(1); }
+  100% { opacity: 0; transform: translateX(40vw) skewX(-20deg) scale(1.1); }
+}
+
+.tablero-pelota-ace {
+  animation: tablero-pelota-ace 700ms cubic-bezier(0.5, 0, 0.9, 0.6) forwards;
+}
+@keyframes tablero-pelota-ace {
+  from { left: -20vh; transform: translateY(-50%) rotate(0); }
+  to { left: 110vw; transform: translateY(-50%) rotate(900deg); }
+}
+
+.tablero-estela {
+  left: -160vw;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--equipo) 80%, white) 85%, transparent);
+  filter: blur(14px);
+  animation: tablero-estela 800ms cubic-bezier(0.5, 0, 0.9, 0.6) forwards;
+}
+@keyframes tablero-estela {
+  0% { transform: translate(0, -50%); opacity: 1; }
+  100% { transform: translate(260vw, -50%); opacity: 0; }
+}
+
+/* Monster block: una pared de manos que sube y el texto que cae a plomo. */
+.tablero-pared {
+  background: linear-gradient(to top, transparent, var(--equipo));
+  transform-origin: bottom;
+  animation: tablero-pared 2.2s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+@keyframes tablero-pared {
+  0% { transform: scaleY(0); }
+  25% { transform: scaleY(1); }
+  80% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(1); opacity: 0; }
+}
+
+.tablero-monstruo,
+.tablero-bloque {
+  animation: tablero-cae 2.2s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.tablero-bloque {
+  animation-delay: 120ms;
+}
+@keyframes tablero-cae {
+  0% { opacity: 0; transform: translateY(-80vh) scale(1.4); }
+  20% { opacity: 1; transform: translateY(0) scale(1); }
+  24% { transform: translateY(0) scaleY(0.85) scaleX(1.08); }
+  30% { transform: translateY(0) scale(1); }
+  82% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(0) scale(1.15); }
+}
+
+.tablero-papel {
+  animation: tablero-papel linear infinite;
+}
+@keyframes tablero-papel {
+  from { transform: translate(0, 0) rotate(var(--giro)); }
+  to { transform: translate(var(--deriva), 110vh) rotate(calc(var(--giro) + 720deg)); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

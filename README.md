@@ -25,11 +25,24 @@ así que quedó sólo Netlify.
 | `/`       | Landing: presentación, características, tarifas, ubicación         |
 | `/turnos` | Turnero con la ocupación real; el cliente pide y el dueño confirma |
 | `/admin`  | Panel del encargado, detrás de login y con `noindex`               |
+| `/tablero` | Marcador de vóley para mostrar en la tele, con `noindex`         |
 
 `components/TurneroConsulta.tsx` quedó sin uso: era el selector que abría
 WhatsApp cuando todavía no había base de datos y no se podía mostrar
 disponibilidad real. Se conserva por si alguna vez hace falta un modo "sin
 backend".
+
+## El tablero para la tele
+
+`/tablero` es un marcador de vóley pensado para abrir en el celu o la compu y
+mandar a la tele duplicando pantalla. Tocar la tarjeta de un equipo le suma un
+punto; **Ace** y **Monster block** también suman uno, pero con su animación.
+Lleva sets (a 25, el decisivo a 15, con dos de diferencia), saque, set point y
+match point, y festeja el set y el partido.
+
+Todo vive en el navegador (`localStorage`): no usa la base, y si se recarga la
+página el marcador sigue donde estaba. Las reglas están en `lib/tablero.ts`,
+puras, y deshacer es volver al estado anterior de una pila.
 
 ## Cómo funcionan los turnos fijos
 
