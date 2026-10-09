@@ -1,10 +1,19 @@
 apply plugin: 'com.android.application'
 
+// El mismo proyecto arma dos apps: el panel de los dueños (por defecto) y el
+// control del tablero de vóley (con `-Ptablero`, ver `npm run apk:tablero`).
+// Distinto applicationId para que puedan estar instaladas las dos a la vez.
+// La dirección que abre cada una la pone capacitor.config.ts.
+def tablero = project.hasProperty('tablero')
+
 android {
     namespace = "com.matterclub.panel"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.matterclub.panel"
+        applicationId tablero ? "com.matterclub.tablero" : "com.matterclub.panel"
+        resValue "string", "app_name", tablero ? "Matter Tablero" : "Matter"
+        resValue "string", "title_activity_main", tablero ? "Matter Tablero" : "Matter"
+        buildConfigField "boolean", "TABLERO", tablero ? "true" : "false"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -15,6 +24,9 @@ android {
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
+    }
+    buildFeatures {
+        buildConfig = true
     }
     buildTypes {
         release {
