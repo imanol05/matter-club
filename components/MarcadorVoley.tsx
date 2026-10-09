@@ -309,9 +309,12 @@ export function Pie({
   const der: Equipo = partido.invertido ? "local" : "visita";
 
   return (
+    // Los botones van juntos a la izquierda: la esquina de abajo a la derecha
+    // queda libre porque ahí el navegador o el hosting a veces ponen un cartel
+    // propio que tapaba "Cambiar lados".
     <footer
       className={`flex min-h-12 items-center gap-3 px-3 py-2 sm:px-6 sm:py-3 ${
-        onDeshacer ? "justify-between" : "justify-center"
+        onDeshacer ? "justify-start" : "justify-center"
       }`}
     >
       {onDeshacer && (
@@ -319,9 +322,19 @@ export function Pie({
           type="button"
           onClick={onDeshacer}
           disabled={!puedeDeshacer}
-          className="rounded-xl border border-borde px-3 py-2 text-sm text-tenue transition-colors hover:text-hueso disabled:opacity-30"
+          className="shrink-0 rounded-xl border border-borde px-3 py-2 text-sm text-tenue transition-colors hover:text-hueso disabled:opacity-30"
         >
           ↶ Deshacer
+        </button>
+      )}
+
+      {onCambiarLados && (
+        <button
+          type="button"
+          onClick={onCambiarLados}
+          className="shrink-0 rounded-xl border border-borde px-3 py-2 text-sm text-tenue transition-colors hover:text-hueso"
+        >
+          ⇄ Cambiar lados
         </button>
       )}
 
@@ -337,16 +350,6 @@ export function Pie({
           );
         })}
       </ol>
-
-      {onCambiarLados && (
-        <button
-          type="button"
-          onClick={onCambiarLados}
-          className="rounded-xl border border-borde px-3 py-2 text-sm text-tenue transition-colors hover:text-hueso"
-        >
-          ⇄ Cambiar lados
-        </button>
-      )}
     </footer>
   );
 }
