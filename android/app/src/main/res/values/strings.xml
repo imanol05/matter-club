@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Matter</string>
-    <string name="title_activity_main">Matter</string>
+    <!-- app_name y title_activity_main salen de android/app/build.gradle:
+         cambian según se arme el panel o el tablero. -->
     <string name="package_name">com.matterclub.panel</string>
     <string name="custom_url_scheme">com.matterclub.panel</string>
 </resources>

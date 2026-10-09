@@ -143,6 +143,17 @@ un keystore propio.
 
 Los clientes no usan esto: para ellos es la página web y listo.
 
+### La app del tablero
+
+Con el mismo proyecto Android sale una segunda app, **Matter Tablero**, que
+abre `/tablero` en vez de `/admin`: es el control del marcador de vóley en el
+celu. Se genera con `npm run apk:tablero` y queda en `matter-tablero.apk`.
+
+Tiene otro `applicationId` (`com.matterclub.tablero`), así que se puede tener
+instalada junto con la de los dueños. Además no deja que se apague la pantalla
+mientras está abierta. Igual que la otra, abre el sitio publicado: muestra lo
+que esté en `main`.
+
 ## El aviso al dueño va por Telegram
 
 Cuando entra una reserva, un disparador de la base le manda un mensaje al dueño
