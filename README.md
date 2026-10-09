@@ -26,6 +26,7 @@ así que quedó sólo Netlify.
 | `/turnos` | Turnero con la ocupación real; el cliente pide y el dueño confirma |
 | `/admin`  | Panel del encargado, detrás de login y con `noindex`               |
 | `/tablero` | Marcador de vóley para mostrar en la tele, con `noindex`         |
+| `/tablero/tele` | La pantalla de la tele, controlada desde `/tablero` en el celu |
 
 `components/TurneroConsulta.tsx` quedó sin uso: era el selector que abría
 WhatsApp cuando todavía no había base de datos y no se podía mostrar
@@ -40,9 +41,30 @@ punto; **Ace** y **Monster block** también suman uno, pero con su animación.
 Lleva sets (a 25, el decisivo a 15, con dos de diferencia), saque, set point y
 match point, y festeja el set y el partido.
 
-Todo vive en el navegador (`localStorage`): no usa la base, y si se recarga la
-página el marcador sigue donde estaba. Las reglas están en `lib/tablero.ts`,
-puras, y deshacer es volver al estado anterior de una pila.
+Se puede usar de dos maneras:
+
+- **Duplicando pantalla**: se abre `/tablero` en el celu o la compu y se manda
+  a la tele con Chromecast, Smart View, AirPlay o HDMI. En la tele se ve lo
+  mismo que se toca, botones incluidos.
+- **Celu de control y tele aparte**: en el navegador de la tele se abre
+  `/tablero/tele`, que muestra un código de 4 letras. En el celu, en
+  `/tablero`, se toca **Tele** y se escribe el código. Desde ahí la tele
+  muestra sólo el marcador y los festejos, sin botones.
+
+El partido vive en el navegador del celu (`localStorage`): si se recarga la
+página el marcador sigue donde estaba. La tele no guarda nada: cuando se
+conecta (o se recarga) le pide el partido al celu. Las reglas están en
+`lib/tablero.ts`, puras, y deshacer es volver al estado anterior de una pila.
+
+Celu y tele hablan por **Supabase Realtime en modo broadcast**
+(`lib/enlace.ts`): un canal por código que reparte mensajes entre los
+conectados y no guarda nada, así que no hizo falta ninguna tabla ni migración.
+También va por `BroadcastChannel`, que une pestañas del mismo navegador sin
+internet (una compu con la tele como segunda pantalla).
+
+Cualquiera que sepa el código puede mandarle un marcador a esa tele. Para un
+tablero de cancha alcanza; los mensajes se validan antes de dibujarse para que
+uno mal formado no rompa la pantalla.
 
 ## Cómo funcionan los turnos fijos
 
