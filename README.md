@@ -149,6 +149,11 @@ Con el mismo proyecto Android sale una segunda app, **Matter Tablero**, que
 abre `/tablero` en vez de `/admin`: es el control del marcador de vóley en el
 celu. Se genera con `npm run apk:tablero` y queda en `matter-tablero.apk`.
 
+Si no hay SDK de Android a mano, los dos APK también se arman en GitHub
+(`.github/workflows/apk.yml`): corre solo cuando cambia algo de las apps, y a
+mano desde **Actions → APK → Run workflow**. El APK queda para descargar en la
+corrida, dentro de un .zip, durante 30 días.
+
 Tiene otro `applicationId` (`com.matterclub.tablero`), así que se puede tener
 instalada junto con la de los dueños. Además no deja que se apague la pantalla
 mientras está abierta. Igual que la otra, abre el sitio publicado: muestra lo
