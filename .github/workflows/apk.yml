@@ -1,0 +1,70 @@
+# Arma los APK de Android en los servidores de GitHub.
+#
+# Hace falta porque compilar Android pide el SDK de Google, que no siempre está
+# a mano. Los servidores de GitHub ya lo traen. El APK queda para descargar en
+# la pestaña Actions, dentro de la corrida, en "Artifacts" (viene en un .zip).
+#
+# Corre solo cuando cambia algo de las apps, y también a mano desde Actions →
+# APK → Run workflow, eligiendo cuál.
+
+name: APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Qué app armar"
+        type: choice
+        options: [tablero, panel]
+        default: tablero
+  push:
+    branches: [main, claude/volleyball-scoreboard-animations-xfs4le]
+    paths:
+      - android/**
+      - capacitor.config.ts
+      - package.json
+      - .github/workflows/apk.yml
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      APP: ${{ inputs.app || 'tablero' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Capacitor 8 y el plugin de Android piden Java 21.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      # La app abre el sitio publicado, pero Capacitor igual exige que exista
+      # la carpeta out/.
+      - run: npm run build:estatico
+
+      - name: Sincronizar Capacitor
+        run: |
+          if [ "$APP" = "tablero" ]; then APP=tablero npx cap sync android; else APP= npx cap sync android; fi
+
+      - name: Compilar
+        working-directory: android
+        run: |
+          if [ "$APP" = "tablero" ]; then EXTRA=-Ptablero; else EXTRA=; fi
+          ./gradlew assembleDebug $EXTRA --no-daemon
+
+      - name: Nombrar el APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk "matter-$APP.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: matter-${{ env.APP }}
+          path: matter-${{ env.APP }}.apk
+          retention-days: 30
