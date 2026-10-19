@@ -9,6 +9,7 @@
     "lint": "eslint",
     "apk": "npm run build:estatico && npx cap sync android && cd android && ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleDebug --no-daemon && cd .. && cp android/app/build/outputs/apk/debug/app-debug.apk ./matter-panel.apk && echo \"APK listo: matter-panel.apk\"",
     "apk:tablero": "npm run build:estatico && APP=tablero npx cap sync android && cd android && ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleDebug -Ptablero --no-daemon && cd .. && cp android/app/build/outputs/apk/debug/app-debug.apk ./matter-tablero.apk && echo \"APK listo: matter-tablero.apk\"",
+    "apk:torneo": "npm run build:estatico && APP=torneo npx cap sync android && cd android && ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleDebug -Ptorneo --no-daemon && cd .. && cp android/app/build/outputs/apk/debug/app-debug.apk ./matter-torneo.apk && echo \"APK listo: matter-torneo.apk\"",
     "build:estatico": "ESTATICO=1 next build"
   },
   "dependencies": {
