@@ -103,6 +103,17 @@ aparece un aviso para **rotar**: un toque corre a todos un lugar,
 como se rota de verdad en la cancha. Las reglas están en `lib/torneo.ts`
 (`alineacionEnJuego`, `debeRotar`, `rotar`).
 
+Las dos canchas se dibujan **enfrentadas**: el local arriba con lo de adelante
+pegado a la red imaginaria del medio, la visita abajo en espejo (también con
+lo de adelante contra la red). Es la misma idea de una cancha vista de
+costado, no dos tarjetas sueltas.
+
+Al elegir un jugador, los botones de abajo no muestran los seis fundamentos
+siempre: sólo el o los que tienen sentido según cómo venía la pelota (saque →
+recepción → armado → ataque → bloqueo/defensa → armado de nuevo…). Si hace
+falta anotar algo fuera de ese orden está "Ver todos los fundamentos". La
+lógica está en `fundamentosSiguientes` (`lib/torneo.ts`).
+
 Con el botón de la tele, el marcador del partido se manda a una tele que tenga
 abierto `/tablero/tele`, igual que desde el tablero: mismo código de 4 letras,
 mismos festejos para el ace, el bloqueo y el fin de set. La parte del enlace

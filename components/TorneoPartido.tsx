@@ -27,6 +27,7 @@ import {
   alineacionEnJuego,
   debeRotar,
   enCancha,
+  fundamentosSiguientes,
   largoUltimaJugada,
   nuevoId,
   preguntasDespues,
@@ -83,9 +84,14 @@ export function CargaPartido({
   const [tele, setTele] = useState<string | null>(leerTele);
   const [anuncio, setAnuncio] = useState<AnuncioActivo | null>(null);
   const [rotacionPendiente, setRotacionPendiente] = useState<Lado | null>(null);
+  const [verTodos, setVerTodos] = useState(false);
 
   const { marcador: m } = useMemo(() => repasar(torneo, partido), [torneo, partido]);
   const terminado = m.ganador !== null;
+  // Qué fundamentos tiene sentido anotar ahora según cómo viene la pelota
+  // (saque → recepción → armado → ataque → bloqueo/defensa → armado…), para
+  // no mostrar los seis siempre. "Ver todos" lo saltea para una jugada rara.
+  const siguiente = useMemo(() => fundamentosSiguientes(partido.acciones), [partido.acciones]);
 
   useSinApagar();
   const teleConectada = useTele(tele, m, anuncio);
@@ -117,6 +123,17 @@ export function CargaPartido({
     const t = setTimeout(() => setAnuncio(null), ms);
     return () => clearTimeout(t);
   }, [anuncio]);
+
+  // "Ver todos" es para una jugada puntual: al elegir otro jugador se vuelve
+  // a lo sugerido. Se ajusta durante el render (en vez de un efecto) porque
+  // es un reseteo de estado disparado por un cambio de props/estado, no una
+  // sincronización con algo externo.
+  const claveElegido = elegido ? `${elegido.lado}:${elegido.id}` : null;
+  const [elegidoDeVerTodos, setElegidoDeVerTodos] = useState(claveElegido);
+  if (claveElegido !== elegidoDeVerTodos) {
+    setElegidoDeVerTodos(claveElegido);
+    setVerTodos(false);
+  }
 
   const equipos: Record<Lado, Equipo | undefined> = {
     local: torneo.equipos.find((e) => e.id === partido.local),
@@ -267,31 +284,41 @@ export function CargaPartido({
         </p>
       )}
 
-      {/* Jugadores en cancha */}
-      <div className="mt-3 grid grid-cols-2 gap-2 px-3">
-        {(["local", "visita"] as const).map((lado) => (
-          <div key={lado} className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-tenue">
-              <span>En cancha</span>
-              <button type="button" onClick={() => setAlineando(lado)} className="underline hover:text-hueso">
-                Alineación
-              </button>
-            </div>
-            {partido.alineacion?.[lado] ? (
-              <GrillaCancha
-                lado={lado}
-                lugares={alineacion[lado]}
-                elegido={elegido?.lado === lado ? elegido.id : null}
-                bloqueado={terminado || !!pendiente}
-                onElegir={(id) => setElegido((e) => (e?.lado === lado && e.id === id ? null : { lado, id }))}
-              />
-            ) : (
-              <p className="text-xs text-tenue">
-                Todavía no armaste la alineación. Tocá <strong>Alineación</strong> para elegir a los 6 titulares.
-              </p>
-            )}
-          </div>
-        ))}
+      {/* Jugadores en cancha, enfrentados como en la cancha real: el local
+          arriba con lo de adelante pegado a la red imaginaria del medio, la
+          visita abajo en espejo (también con lo de adelante junto a la red). */}
+      <div className="mt-3 space-y-1.5 px-3">
+        <EquipoEnCancha
+          lado="local"
+          nombre={m.nombres.local}
+          tieneAlineacion={!!partido.alineacion?.local}
+          lugares={alineacion.local}
+          elegido={elegido?.lado === "local" ? elegido.id : null}
+          bloqueado={terminado || !!pendiente}
+          onElegir={(id) =>
+            setElegido((e) => (e?.lado === "local" && e.id === id ? null : { lado: "local", id }))
+          }
+          onAlinear={() => setAlineando("local")}
+          primeraFila="atras"
+        />
+        <div className="flex items-center gap-2 py-0.5 text-[0.6rem] tracking-[0.3em] text-tenue uppercase">
+          <span className="h-px flex-1 bg-borde" />
+          Red
+          <span className="h-px flex-1 bg-borde" />
+        </div>
+        <EquipoEnCancha
+          lado="visita"
+          nombre={m.nombres.visita}
+          tieneAlineacion={!!partido.alineacion?.visita}
+          lugares={alineacion.visita}
+          elegido={elegido?.lado === "visita" ? elegido.id : null}
+          bloqueado={terminado || !!pendiente}
+          onElegir={(id) =>
+            setElegido((e) => (e?.lado === "visita" && e.id === id ? null : { lado: "visita", id }))
+          }
+          onAlinear={() => setAlineando("visita")}
+          primeraFila="adelante"
+        />
       </div>
 
       {rotacionPendiente && (
@@ -351,7 +378,7 @@ export function CargaPartido({
             <span className="text-tenue">· {m.nombres[elegido.lado]}</span>
           </p>
           <div className="space-y-2">
-            {FUNDAMENTOS.map((f) => (
+            {FUNDAMENTOS.filter((f) => verTodos || siguiente.includes(f.clave)).map((f) => (
               <div key={f.clave} className="flex items-center gap-2">
                 <span className="w-20 shrink-0 text-xs font-semibold tracking-wide text-tenue uppercase">
                   {f.etiqueta}
@@ -377,6 +404,13 @@ export function CargaPartido({
               </div>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => setVerTodos((v) => !v)}
+            className="mt-2 text-xs text-tenue underline hover:text-hueso"
+          >
+            {verTodos ? "Volver a lo sugerido" : "Ver todos los fundamentos"}
+          </button>
         </div>
       )}
 
@@ -421,19 +455,25 @@ export function CargaPartido({
 const FILA_ADELANTE = [3, 2, 1];
 const FILA_ATRAS = [4, 5, 0];
 
-/** La cancha en 2 filas de 3, como se juega de verdad: adelante arriba, atrás abajo. */
+/**
+ * La cancha en 2 filas de 3. `primeraFila` elige cuál va arriba: los dos
+ * equipos se dibujan enfrentados, con lo de adelante de cada uno pegado a la
+ * red imaginaria que queda en el medio (ver `EquipoEnCancha`).
+ */
 function GrillaCancha({
   lado,
   lugares,
   elegido,
   bloqueado,
   onElegir,
+  primeraFila,
 }: {
   lado: Lado;
   lugares: LugarEnJuego[];
   elegido: string | null;
   bloqueado: boolean;
   onElegir: (id: string) => void;
+  primeraFila: "adelante" | "atras";
 }) {
   const celda = (indice: number) => {
     const l = lugares[indice];
@@ -462,10 +502,66 @@ function GrillaCancha({
     );
   };
 
+  const filas =
+    primeraFila === "adelante"
+      ? [FILA_ADELANTE, FILA_ATRAS]
+      : [FILA_ATRAS, FILA_ADELANTE];
+
   return (
     <div className="space-y-1">
-      <div className="grid grid-cols-3 gap-1">{FILA_ADELANTE.map(celda)}</div>
-      <div className="grid grid-cols-3 gap-1">{FILA_ATRAS.map(celda)}</div>
+      {filas.map((fila, i) => (
+        <div key={i} className="grid grid-cols-3 gap-1">
+          {fila.map(celda)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** El nombre, el link a la alineación y la cancha (o el aviso de armarla) de un lado. */
+function EquipoEnCancha({
+  lado,
+  nombre,
+  tieneAlineacion,
+  lugares,
+  elegido,
+  bloqueado,
+  onElegir,
+  onAlinear,
+  primeraFila,
+}: {
+  lado: Lado;
+  nombre: string;
+  tieneAlineacion: boolean;
+  lugares: LugarEnJuego[];
+  elegido: string | null;
+  bloqueado: boolean;
+  onElegir: (id: string) => void;
+  onAlinear: () => void;
+  primeraFila: "adelante" | "atras";
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs text-tenue">
+        <span className="font-semibold text-hueso">{nombre}</span>
+        <button type="button" onClick={onAlinear} className="underline hover:text-hueso">
+          Alineación
+        </button>
+      </div>
+      {tieneAlineacion ? (
+        <GrillaCancha
+          lado={lado}
+          lugares={lugares}
+          elegido={elegido}
+          bloqueado={bloqueado}
+          onElegir={onElegir}
+          primeraFila={primeraFila}
+        />
+      ) : (
+        <p className="text-xs text-tenue">
+          Todavía no armaste la alineación. Tocá <strong>Alineación</strong> para elegir a los 6 titulares.
+        </p>
+      )}
     </div>
   );
 }
