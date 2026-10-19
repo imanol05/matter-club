@@ -118,6 +118,8 @@ export interface Equipo {
   id: string;
   nombre: string;
   jugadores: Jugador[];
+  /** El líbero del plantel, si tienen. Entra solo cuando le toca atrás (ver LugarRotacion). */
+  liberoId?: string;
 }
 
 /**
@@ -148,6 +150,16 @@ export const NOMBRE_RONDA: Record<Ronda, string> = {
   final: "Final",
 };
 
+/**
+ * Un lugar de la rotación: quién lo ocupa. Si tiene `libero`, cuando ese lugar
+ * le toca atrás juega el líbero en vez del titular (ver `LUGARES_ATRAS`); el
+ * líbero nunca juega adelante, así que no hace falta impedirlo a mano.
+ */
+export interface LugarRotacion {
+  titular: string;
+  libero?: string;
+}
+
 export interface PartidoTorneo {
   id: string;
   local: string;
@@ -156,8 +168,11 @@ export interface PartidoTorneo {
   creado: number;
   acciones: Accion[];
   ronda?: Ronda;
-  /** Ids de los jugadores en cancha de cada lado. Sin dato, los primeros seis de la lista. */
-  enCancha?: Record<Lado, string[]>;
+  /**
+   * Los 6 lugares de cada lado, en orden de rotación (el [0] es el que saca).
+   * Sin dato, los primeros seis de la lista, sin rotar y sin líbero.
+   */
+  alineacion?: Partial<Record<Lado, LugarRotacion[]>>;
 }
 
 export interface Torneo {
@@ -315,12 +330,67 @@ export function respuesta(
   };
 }
 
-/** Los jugadores en cancha de un lado, en el orden del plantel. */
-export function enCancha(p: PartidoTorneo, equipo: Equipo | undefined, lado: Lado): Jugador[] {
+/* ───────────────────────────── Rotación y líbero ───────────────────────────── */
+
+/**
+ * Los lugares 1, 6 y 5 son los de atrás (reciben, y ahí es donde puede entrar
+ * el líbero); el resto, el 2, el 3 y el 4, son los de adelante. Se cuentan por
+ * índice (0 = lugar 1), que es el orden en que se guarda la alineación.
+ */
+const LUGARES_ATRAS = [0, 4, 5];
+
+function alineacionPorDefecto(equipo: Equipo): LugarRotacion[] {
+  return equipo.jugadores.slice(0, 6).map((j) => ({ titular: j.id }));
+}
+
+/** Un lugar de la rotación, ya resuelto: quién juega ahí ahora mismo. */
+export interface LugarEnJuego {
+  /** 0 a 5; el [0] es el que saca. */
+  indice: number;
+  atras: boolean;
+  jugador?: Jugador;
+  esLibero: boolean;
+  /** El titular, cuando el que está jugando ahí es el líbero. */
+  suplantado?: Jugador;
+}
+
+/** Los 6 lugares de un lado, resolviendo a quién le toca jugar en cada uno. */
+export function alineacionEnJuego(p: PartidoTorneo, equipo: Equipo | undefined, lado: Lado): LugarEnJuego[] {
   if (!equipo) return [];
-  const ids = p.enCancha?.[lado];
-  if (!ids) return equipo.jugadores.slice(0, 6);
-  return equipo.jugadores.filter((j) => ids.includes(j.id));
+  const porId = new Map(equipo.jugadores.map((j) => [j.id, j]));
+  const lugares = p.alineacion?.[lado] ?? alineacionPorDefecto(equipo);
+  return lugares.map((lugar, indice) => {
+    const atras = LUGARES_ATRAS.includes(indice);
+    const esLibero = atras && !!lugar.libero;
+    return {
+      indice,
+      atras,
+      jugador: porId.get(esLibero ? lugar.libero! : lugar.titular),
+      esLibero,
+      suplantado: esLibero ? porId.get(lugar.titular) : undefined,
+    };
+  });
+}
+
+/** Los jugadores que están jugando ahora en un lado (resuelto el líbero), para elegir a quién le pasó algo. */
+export function enCancha(p: PartidoTorneo, equipo: Equipo | undefined, lado: Lado): Jugador[] {
+  return alineacionEnJuego(p, equipo, lado)
+    .map((l) => l.jugador)
+    .filter((j): j is Jugador => !!j);
+}
+
+/**
+ * Si alguien recuperó el saque recién (pasó de no sacar a sacar), toca rotar.
+ * `anterior` es el saque antes del último punto cargado; si todavía no sacó
+ * nadie (arranque del partido) no cuenta como rotación, es el primer saque.
+ */
+export function debeRotar(anterior: Lado | null, actual: Lado | null): Lado | null {
+  return anterior && actual && actual !== anterior ? actual : null;
+}
+
+/** El lugar 2 pasa a sacar; el resto se corre uno, y el que sacaba va al final. */
+export function rotar(lugares: LugarRotacion[]): LugarRotacion[] {
+  return [...lugares.slice(1), lugares[0]];
 }
 
 export function nombreEquipo(t: Torneo, id: string): string {

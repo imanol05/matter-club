@@ -13,7 +13,7 @@
  * abre /tablero/tele y no nota la diferencia.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { duracionAnuncio, useSinApagar, type AnuncioActivo } from "./MarcadorVoley";
 import { DialogoTele, Modal } from "./Tablero";
@@ -24,18 +24,23 @@ import { numeroDeSet, otro } from "@/lib/tablero";
 import {
   FUNDAMENTOS,
   NOMBRE_RONDA,
+  alineacionEnJuego,
+  debeRotar,
   enCancha,
   largoUltimaJugada,
   nuevoId,
   preguntasDespues,
   repasar,
   respuesta,
+  rotar,
   tipoAccion,
   type Accion,
   type Equipo,
   type Fundamento,
   type Jugador,
   type Lado,
+  type LugarEnJuego,
+  type LugarRotacion,
   type PartidoTorneo,
   type Pregunta,
   type Torneo,
@@ -73,16 +78,27 @@ export function CargaPartido({
 }) {
   const [elegido, setElegido] = useState<{ lado: Lado; id: string } | null>(null);
   const [pendiente, setPendiente] = useState<Pendiente | null>(null);
-  const [cambios, setCambios] = useState<Lado | null>(null);
+  const [alineando, setAlineando] = useState<Lado | null>(null);
   const [dialogoTele, setDialogoTele] = useState(false);
   const [tele, setTele] = useState<string | null>(leerTele);
   const [anuncio, setAnuncio] = useState<AnuncioActivo | null>(null);
+  const [rotacionPendiente, setRotacionPendiente] = useState<Lado | null>(null);
 
   const { marcador: m } = useMemo(() => repasar(torneo, partido), [torneo, partido]);
   const terminado = m.ganador !== null;
 
   useSinApagar();
   const teleConectada = useTele(tele, m, anuncio);
+
+  // Apenas un lado recupera el saque, toca rotar: el ref guarda el saque de
+  // la jugada anterior para notar el cambio sin volver a avisar en cada punto
+  // mientras ese mismo lado siga sacando.
+  const saqueAnterior = useRef<Lado | null>(m.saque);
+  useEffect(() => {
+    const lado = debeRotar(saqueAnterior.current, m.saque);
+    saqueAnterior.current = m.saque;
+    if (lado && partido.alineacion?.[lado]) setRotacionPendiente(lado);
+  }, [m.saque, partido.alineacion]);
 
   useEffect(() => {
     try {
@@ -110,7 +126,23 @@ export function CargaPartido({
     local: enCancha(partido, equipos.local, "local"),
     visita: enCancha(partido, equipos.visita, "visita"),
   };
+  const alineacion: Record<Lado, LugarEnJuego[]> = {
+    local: alineacionEnJuego(partido, equipos.local, "local"),
+    visita: alineacionEnJuego(partido, equipos.visita, "visita"),
+  };
   const jugadorDe = (lado: Lado, id: string | null) => equipos[lado]?.jugadores.find((j) => j.id === id);
+
+  const aplicarRotacion = (lado: Lado) => {
+    onCambiar((p) => {
+      const lugares = p.alineacion?.[lado];
+      if (!lugares) return p;
+      return { ...p, alineacion: { ...p.alineacion, [lado]: rotar(lugares) } };
+    });
+    setRotacionPendiente(null);
+  };
+
+  const guardarAlineacion = (lado: Lado, lugares: LugarRotacion[]) =>
+    onCambiar((p) => ({ ...p, alineacion: { ...p.alineacion, [lado]: lugares } }));
 
   /** Suma acciones y, si alguna hizo un punto, le avisa a la tele para el festejo. */
   const agregar = useCallback(
@@ -157,6 +189,7 @@ export function CargaPartido({
     setPendiente(null);
     setElegido(null);
     setAnuncio(null);
+    setRotacionPendiente(null);
   };
 
   const puntoSinJugador = (lado: Lado) => {
@@ -239,34 +272,40 @@ export function CargaPartido({
         {(["local", "visita"] as const).map((lado) => (
           <div key={lado} className="space-y-1.5">
             <div className="flex items-center justify-between text-xs text-tenue">
-              <span>En cancha ({cancha[lado].length})</span>
-              <button type="button" onClick={() => setCambios(lado)} className="underline hover:text-hueso">
-                Cambios
+              <span>En cancha</span>
+              <button type="button" onClick={() => setAlineando(lado)} className="underline hover:text-hueso">
+                Alineación
               </button>
             </div>
-            {cancha[lado].map((j) => {
-              const activo = elegido?.lado === lado && elegido.id === j.id;
-              return (
-                <button
-                  key={j.id}
-                  type="button"
-                  disabled={terminado || !!pendiente}
-                  onClick={() => setElegido(activo ? null : { lado, id: j.id })}
-                  className={`flex w-full items-center gap-2 rounded-xl border-2 px-2 py-2 text-left text-sm transition disabled:opacity-40 ${
-                    activo ? LADO_COLOR[lado] : "border-borde bg-carbon"
-                  }`}
-                >
-                  <span className="w-7 text-right font-black tabular-nums">{j.numero || "–"}</span>
-                  <span className="truncate">{j.nombre}</span>
-                </button>
-              );
-            })}
-            {cancha[lado].length === 0 && (
-              <p className="text-xs text-tenue">Nadie en cancha. Tocá Cambios para elegir quiénes juegan.</p>
+            {partido.alineacion?.[lado] ? (
+              <GrillaCancha
+                lado={lado}
+                lugares={alineacion[lado]}
+                elegido={elegido?.lado === lado ? elegido.id : null}
+                bloqueado={terminado || !!pendiente}
+                onElegir={(id) => setElegido((e) => (e?.lado === lado && e.id === id ? null : { lado, id }))}
+              />
+            ) : (
+              <p className="text-xs text-tenue">
+                Todavía no armaste la alineación. Tocá <strong>Alineación</strong> para elegir a los 6 titulares.
+              </p>
             )}
           </div>
         ))}
       </div>
+
+      {rotacionPendiente && (
+        <div className="mx-3 mt-2 flex items-center justify-between gap-3 rounded-xl border-2 border-emerald-500/60 bg-emerald-500/10 px-3 py-2">
+          <p className="text-sm font-semibold">{m.nombres[rotacionPendiente]} recuperó el saque: toca rotar.</p>
+          <button
+            type="button"
+            onClick={() => aplicarRotacion(rotacionPendiente)}
+            className={`${BOTON} shrink-0 border-emerald-500/60`}
+          >
+            ↻ Rotar
+          </button>
+        </div>
+      )}
 
       {/* Pregunta por la otra cara de la pelota */}
       {pendiente && pregunta && ladoPregunta && (
@@ -362,22 +401,12 @@ export function CargaPartido({
         </div>
       )}
 
-      {cambios && equipos[cambios] && (
-        <DialogoCambios
-          equipo={equipos[cambios]!}
-          enCancha={cancha[cambios].map((j) => j.id)}
-          onCambiar={(ids) =>
-            onCambiar((p) => ({
-              ...p,
-              enCancha: {
-                local: cancha.local.map((j) => j.id),
-                visita: cancha.visita.map((j) => j.id),
-                ...p.enCancha,
-                [cambios]: ids,
-              },
-            }))
-          }
-          onCerrar={() => setCambios(null)}
+      {alineando && equipos[alineando] && (
+        <DialogoAlineacion
+          equipo={equipos[alineando]!}
+          actual={partido.alineacion?.[alineando]}
+          onGuardar={(lugares) => guardarAlineacion(alineando, lugares)}
+          onCerrar={() => setAlineando(null)}
         />
       )}
 
@@ -388,52 +417,170 @@ export function CargaPartido({
   );
 }
 
-/** Quiénes están en cancha. Se tocan para entrar o salir; vale desde la próxima jugada. */
-function DialogoCambios({
+/** Adelante, de izquierda a derecha: lugares 4, 3 y 2. Atrás: 5, 6 y 1 (el que saca). */
+const FILA_ADELANTE = [3, 2, 1];
+const FILA_ATRAS = [4, 5, 0];
+
+/** La cancha en 2 filas de 3, como se juega de verdad: adelante arriba, atrás abajo. */
+function GrillaCancha({
+  lado,
+  lugares,
+  elegido,
+  bloqueado,
+  onElegir,
+}: {
+  lado: Lado;
+  lugares: LugarEnJuego[];
+  elegido: string | null;
+  bloqueado: boolean;
+  onElegir: (id: string) => void;
+}) {
+  const celda = (indice: number) => {
+    const l = lugares[indice];
+    if (!l?.jugador) {
+      return <div key={indice} className="rounded-lg border border-dashed border-borde/60" />;
+    }
+    const activo = elegido === l.jugador.id;
+    return (
+      <button
+        key={indice}
+        type="button"
+        disabled={bloqueado}
+        onClick={() => onElegir(l.jugador!.id)}
+        className={`flex min-h-14 flex-col items-center justify-center rounded-lg border-2 px-0.5 py-1 text-center leading-tight transition disabled:opacity-40 ${
+          activo ? LADO_COLOR[lado] : "border-borde bg-carbon"
+        }`}
+      >
+        <span className="font-black tabular-nums">{l.jugador.numero || "–"}</span>
+        <span className="w-full truncate text-[0.65rem]">{l.jugador.nombre}</span>
+        {/* Reglas FIVB desde 2021: el líbero puede sacar en el único lugar en el
+            que juega, así que "L" y "saca" pueden darse juntos acá. */}
+        <span className="text-[0.6rem] font-bold text-emerald-400">
+          {[l.esLibero && "L", l.indice === 0 && "saca"].filter(Boolean).join(" · ") || " "}
+        </span>
+      </button>
+    );
+  };
+
+  return (
+    <div className="space-y-1">
+      <div className="grid grid-cols-3 gap-1">{FILA_ADELANTE.map(celda)}</div>
+      <div className="grid grid-cols-3 gap-1">{FILA_ATRAS.map(celda)}</div>
+    </div>
+  );
+}
+
+/**
+ * La alineación inicial: se tocan los 6 titulares en el orden en que sacan
+ * (el primero toca es el que saca primero), y si el equipo tiene líbero
+ * cargado se elige en qué lugar entra cuando le toca atrás. Sirve también
+ * para corregirla después: se reabre con lo que ya había elegido.
+ */
+function DialogoAlineacion({
   equipo,
-  enCancha,
-  onCambiar,
+  actual,
+  onGuardar,
   onCerrar,
 }: {
   equipo: Equipo;
-  enCancha: string[];
-  onCambiar: (ids: string[]) => void;
+  actual?: LugarRotacion[];
+  onGuardar: (lugares: LugarRotacion[]) => void;
   onCerrar: () => void;
 }) {
-  const alternar = (id: string) =>
-    onCambiar(
-      equipo.jugadores
-        .map((j) => j.id)
-        .filter((x) => (x === id ? !enCancha.includes(x) : enCancha.includes(x))),
+  const [orden, setOrden] = useState<string[]>(() => actual?.map((l) => l.titular) ?? []);
+  const [libero, setLibero] = useState<number | null>(() => {
+    const i = actual?.findIndex((l) => l.libero) ?? -1;
+    return i >= 0 ? i : null;
+  });
+
+  if (equipo.jugadores.length < 6) {
+    return (
+      <Modal titulo={`Alineación · ${equipo.nombre}`} onCerrar={onCerrar}>
+        <p className="text-sm text-tenue">
+          Hacen falta 6 jugadores cargados en el plantel para armar la alineación (hoy tiene{" "}
+          {equipo.jugadores.length}).
+        </p>
+      </Modal>
     );
+  }
+
+  const alternar = (id: string) =>
+    setOrden((o) => {
+      const i = o.indexOf(id);
+      if (i >= 0) {
+        setLibero((l) => (l === null ? l : l === i ? null : l > i ? l - 1 : l));
+        return o.filter((x) => x !== id);
+      }
+      return o.length >= 6 ? o : [...o, id];
+    });
+
+  const completo = orden.length === 6;
+  const libre = equipo.liberoId;
+  const liberoSuelto = !!libre && !orden.includes(libre);
+
+  const guardar = () => {
+    const lugares: LugarRotacion[] = orden.map((id, i) => ({
+      titular: id,
+      ...(i === libero && libre ? { libero: libre } : {}),
+    }));
+    onGuardar(lugares);
+    onCerrar();
+  };
 
   return (
-    <Modal titulo={`En cancha · ${equipo.nombre}`} onCerrar={onCerrar}>
+    <Modal titulo={`Alineación · ${equipo.nombre}`} onCerrar={onCerrar}>
       <p className="mb-3 text-sm text-tenue">
-        Tocá para que entre o salga. Hay {enCancha.length} en cancha
-        {enCancha.length > 7 && " (más de 6 y el líbero: fijate si sobra alguno)"}.
+        Tocá a los 6 titulares en el orden en que van a sacar, empezando por quien saca primero.
       </p>
       <div className="grid grid-cols-2 gap-2">
         {equipo.jugadores.map((j) => {
-          const esta = enCancha.includes(j.id);
+          const i = orden.indexOf(j.id);
           return (
             <button
               key={j.id}
               type="button"
               onClick={() => alternar(j.id)}
-              aria-pressed={esta}
-              className={`flex items-center gap-2 rounded-xl border-2 px-2 py-2 text-left text-sm ${
-                esta ? "border-emerald-500/70 bg-emerald-500/15" : "border-borde bg-noche text-tenue"
+              disabled={i === -1 && completo}
+              className={`flex items-center gap-2 rounded-xl border-2 px-2 py-2 text-left text-sm disabled:opacity-30 ${
+                i >= 0 ? "border-emerald-500/70 bg-emerald-500/15" : "border-borde bg-noche text-tenue"
               }`}
             >
+              {i >= 0 && <span className="w-4 text-center font-black text-emerald-400">{i + 1}</span>}
               <span className="w-7 text-right font-black tabular-nums">{j.numero || "–"}</span>
               <span className="truncate">{j.nombre}</span>
             </button>
           );
         })}
       </div>
-      <button type="button" onClick={onCerrar} className={`${BOTON} mt-4 w-full`}>
-        Listo
+
+      {completo && liberoSuelto && (
+        <div className="mt-4">
+          <p className="mb-2 text-sm text-tenue">
+            ¿En qué lugar entra {equipo.jugadores.find((j) => j.id === libre)?.nombre} (líbero) cuando le toca
+            atrás?
+          </p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {orden.map((id, i) => {
+              const j = equipo.jugadores.find((x) => x.id === id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setLibero((l) => (l === i ? null : i))}
+                  className={`truncate rounded-lg border-2 px-2 py-2 text-xs font-semibold ${
+                    libero === i ? "border-emerald-500/70 bg-emerald-500/15" : "border-borde text-tenue"
+                  }`}
+                >
+                  {i + 1}. {j?.nombre}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <button type="button" onClick={guardar} disabled={!completo} className={`${BOTON} mt-4 w-full`}>
+        Guardar
       </button>
     </Modal>
   );
