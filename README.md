@@ -7,7 +7,7 @@ Tailwind 4 + TypeScript.
 npm run dev            # http://localhost:3000
 npm run build:estatico # lo que se publica (genera out/)
 npx eslint .           # lint
-npm run apk            # genera matter-panel.apk para los dueños
+npm run apk            # genera matter-panel.apk para los dueños (también apk:tablero y apk:torneo)
 ```
 
 Publicado en <https://matterclub.netlify.app/>
@@ -25,11 +25,125 @@ así que quedó sólo Netlify.
 | `/`       | Landing: presentación, características, tarifas, ubicación         |
 | `/turnos` | Turnero con la ocupación real; el cliente pide y el dueño confirma |
 | `/admin`  | Panel del encargado, detrás de login y con `noindex`               |
+| `/tablero` | Marcador de vóley para mostrar en la tele, con `noindex`         |
+| `/tablero/tele` | La pantalla de la tele, controlada desde `/tablero` en el celu |
+| `/torneo` | Torneo: fixture, estadísticas por jugador y premios, con `noindex` |
 
 `components/TurneroConsulta.tsx` quedó sin uso: era el selector que abría
 WhatsApp cuando todavía no había base de datos y no se podía mostrar
 disponibilidad real. Se conserva por si alguna vez hace falta un modo "sin
 backend".
+
+## El tablero para la tele
+
+`/tablero` es un marcador de vóley pensado para abrir en el celu o la compu y
+mandar a la tele duplicando pantalla. Tocar la tarjeta de un equipo le suma un
+punto; **Ace** y **Monster block** también suman uno, pero con su animación.
+Lleva sets (a 25, el decisivo a 15, con dos de diferencia), saque, set point y
+match point, y festeja el set y el partido.
+
+Se puede usar de dos maneras:
+
+- **Duplicando pantalla**: se abre `/tablero` en el celu o la compu y se manda
+  a la tele con Chromecast, Smart View, AirPlay o HDMI. En la tele se ve lo
+  mismo que se toca, botones incluidos.
+- **Celu de control y tele aparte**: en el navegador de la tele se abre
+  `/tablero/tele`, que muestra un código de 4 letras. En el celu, en
+  `/tablero`, se toca **Tele** y se escribe el código. Desde ahí la tele
+  muestra sólo el marcador y los festejos, sin botones.
+
+El partido vive en el navegador del celu (`localStorage`): si se recarga la
+página el marcador sigue donde estaba. La tele no guarda nada: cuando se
+conecta (o se recarga) le pide el partido al celu. Las reglas están en
+`lib/tablero.ts`, puras, y deshacer es volver al estado anterior de una pila.
+
+Celu y tele hablan por **Supabase Realtime en modo broadcast**
+(`lib/enlace.ts`): un canal por código que reparte mensajes entre los
+conectados y no guarda nada, así que no hizo falta ninguna tabla ni migración.
+También va por `BroadcastChannel`, que une pestañas del mismo navegador sin
+internet (una compu con la tele como segunda pantalla).
+
+Cualquiera que sepa el código puede mandarle un marcador a esa tele. Para un
+tablero de cancha alcanza; los mensajes se validan antes de dibujarse para que
+uno mal formado no rompa la pantalla.
+
+## Las estadísticas del torneo
+
+`/torneo` sirve para organizar un torneo de 8 equipos, llevar las estadísticas
+de cada jugador y premiar a los mejores al final. Se cargan los equipos con sus
+jugadores (número y nombre, que se pueden corregir sin perder nada: las
+jugadas van atadas al jugador, no al nombre), se arma el fixture y se anota
+cada partido jugada por jugada: se toca al jugador y después qué hizo.
+
+### El fixture
+
+Dos zonas de 4, todos contra todos dentro de la zona (12 partidos). Las zonas
+se reparten a mano o por sorteo. Pasan los dos primeros: semis cruzadas (1°A
+contra 2°B y 1°B contra 2°A), y después final y 3er puesto. Las semis se arman
+cuando terminan las zonas, y la final cuando terminan las semis.
+
+La tabla da los puntos como la FIVB: ganar sin llegar al set decisivo vale 3
+(y 0 al que pierde); si se define en el decisivo, 2 al que gana y 1 al que
+pierde. Desempata el cociente de sets y después el de tantos. Las reglas
+están en `lib/torneo.ts`.
+
+### En la cancha
+
+Abajo del marcador aparecen sólo los jugadores **en cancha**: arrancan los seis
+primeros de la lista y con **Cambios** se mete o se saca a cualquiera (el
+líbero también).
+
+Con el botón de la tele, el marcador del partido se manda a una tele que tenga
+abierto `/tablero/tele`, igual que desde el tablero: mismo código de 4 letras,
+mismos festejos para el ace, el bloqueo y el fin de set. La parte del enlace
+que comparten los dos está en `components/useTele.ts`.
+
+Los partidos son al mejor de 3 sets; en **Partidos** se puede pasar el torneo
+al mejor de 5. El cambio vale para los partidos que se armen después: los que
+ya empezaron siguen con el formato con el que arrancaron.
+
+| Fundamento | Opciones                        | Qué hace con el marcador    |
+| ---------- | ------------------------------- | --------------------------- |
+| Saque      | Ace · En juego · Error          | Ace suma; error, al rival   |
+| Recepción  | Perfecta · Buena · Mala · Error | Error, punto para el rival  |
+| Armado     | Asistencia · Buena · Error      | Error, punto para el rival  |
+| Ataque     | Punto · En juego · Error        | Punto suma; error, al rival |
+| Bloqueo    | Punto · Toque · Error           | Punto suma; error, al rival |
+| Defensa    | Buena · Mala · Error            | Error, punto para el rival  |
+
+Un partido no guarda el marcador sino la lista de jugadas: el marcador se
+rearma reproduciéndolas con las reglas del tablero (`lib/tablero.ts`). Así
+deshacer es sacar la última jugada y el marcador no puede desfasarse de las
+estadísticas. Para los puntos que no son de nadie (un error del rival que no
+se cargó, una falta) está **+ Punto sin jugador**.
+
+Una pelota tiene dos caras: el ace de uno es el error de recepción del otro,
+el punto de ataque es el error de defensa del rival. Para no sumar el punto
+dos veces, después de esas jugadas **la app pregunta por la otra cara** (tras
+un ace, quién no pudo recibir; tras un punto de ataque, quién armó y quién no
+la pudo defender; tras un bloqueo, a quién bloquearon). La respuesta se anota
+para las estadísticas pero queda ligada: no vuelve a mover el marcador. Se
+puede saltear, y deshacer borra la pelota entera con sus respuestas.
+
+Los premios (`lib/torneo.ts`) son una sugerencia sobre lo cargado:
+
+- **Mejor saque**: aces.
+- **Mejor armador**: asistencias.
+- **Mejor receptor**: promedio de 0 a 3 (perfecta 3, buena 2, mala 1, error
+  0). Compiten los que recibieron al menos un tercio de las pelotas que
+  recibió el que más recibió (y nunca menos de 3), para que no gane uno que
+  recibió una sola. Así el mínimo se acomoda solo al largo del torneo.
+- **Mejor defensa**: defensas buenas.
+- **Mejor bloqueador**: puntos de bloqueo.
+- **Mejor ataque**: puntos de ataque.
+
+Los empates se desempatan por menos errores en ese fundamento (en bloqueo, por
+más toques; en recepción, por más pelotas recibidas).
+
+Como el tablero, todo queda en el navegador (`localStorage`) y anda sin
+internet. Por eso hay **Exportar** e **Importar**: el torneo baja a un .json
+que se puede guardar o abrir en otro celu. Si dos personas cargan partidos en
+dos celus distintos, hoy no se juntan solos.
 
 ## Cómo funcionan los turnos fijos
 
@@ -107,6 +221,32 @@ alcanza para repartirlo a mano; si algún día va a la Play Store hay que armar
 un keystore propio.
 
 Los clientes no usan esto: para ellos es la página web y listo.
+
+### La app del tablero
+
+Con el mismo proyecto Android sale una segunda app, **Matter Tablero**, que
+abre `/tablero` en vez de `/admin`: es el control del marcador de vóley en el
+celu. Se genera con `npm run apk:tablero` y queda en `matter-tablero.apk`.
+
+Tiene otro `applicationId` (`com.matterclub.tablero`), así que se puede tener
+instalada junto con la de los dueños. Además no deja que se apague la pantalla
+mientras está abierta. Igual que la otra, abre el sitio publicado: muestra lo
+que esté en `main`.
+
+### La app del torneo
+
+La tercera, **Matter Torneo** (`com.matterclub.torneo`), abre `/torneo`: es
+para anotar los partidos del torneo en el celu. Se genera con
+`npm run apk:torneo` y queda en `matter-torneo.apk`. Tampoco deja que se
+apague la pantalla. Los datos del torneo quedan en el celu, dentro de la app:
+desinstalarla los borra, así que conviene exportar el torneo antes.
+
+### Armarlas en GitHub
+
+Si no hay SDK de Android a mano, los tres APK también se arman en GitHub
+(`.github/workflows/apk.yml`): corre solo cuando cambia algo de las apps, y a
+mano desde **Actions → APK → Run workflow**, eligiendo cuál. El APK queda para
+descargar en la corrida, dentro de un .zip, durante 30 días.
 
 ## El aviso al dueño va por Telegram
 
