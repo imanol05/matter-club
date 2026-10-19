@@ -134,8 +134,11 @@ function TablaZona({
   return (
     <section className="space-y-2">
       <h3 className="font-bold">{NOMBRE_RONDA[ronda]}</h3>
+      {/* Sólo lo que se lee de un vistazo en el celu: PG, PP y tantos siguen
+          contando para el desempate (lib/torneo.ts) pero no entraban en una
+          pantalla angosta sin scroll horizontal, y para eso ya está Pts. */}
       <div className="overflow-x-auto rounded-2xl border border-borde">
-        <table className="w-full min-w-[420px] text-sm">
+        <table className="w-full text-sm">
           <thead className="bg-carbon-2 text-xs text-tenue">
             <tr>
               <th className="px-2 py-1 text-left">Equipo</th>
@@ -145,17 +148,8 @@ function TablaZona({
               <th className={celda} title="Jugados">
                 PJ
               </th>
-              <th className={celda} title="Ganados">
-                PG
-              </th>
-              <th className={celda} title="Perdidos">
-                PP
-              </th>
               <th className={celda} title="Sets a favor y en contra">
                 Sets
-              </th>
-              <th className={celda} title="Tantos a favor y en contra">
-                Tantos
               </th>
             </tr>
           </thead>
@@ -168,13 +162,8 @@ function TablaZona({
                 </td>
                 <td className={`${celda} font-bold`}>{f.puntos}</td>
                 <td className={celda}>{f.jugados}</td>
-                <td className={celda}>{f.ganados}</td>
-                <td className={celda}>{f.perdidos}</td>
                 <td className={celda}>
                   {f.setsAFavor}-{f.setsEnContra}
-                </td>
-                <td className={celda}>
-                  {f.tantosAFavor}-{f.tantosEnContra}
                 </td>
               </tr>
             ))}
