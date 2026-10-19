@@ -27,6 +27,7 @@ así que quedó sólo Netlify.
 | `/admin`  | Panel del encargado, detrás de login y con `noindex`               |
 | `/tablero` | Marcador de vóley para mostrar en la tele, con `noindex`         |
 | `/tablero/tele` | La pantalla de la tele, controlada desde `/tablero` en el celu |
+| `/torneo` | Estadísticas por jugador de un torneo y premios, con `noindex` |
 
 `components/TurneroConsulta.tsx` quedó sin uso: era el selector que abría
 WhatsApp cuando todavía no había base de datos y no se podía mostrar
@@ -65,6 +66,43 @@ internet (una compu con la tele como segunda pantalla).
 Cualquiera que sepa el código puede mandarle un marcador a esa tele. Para un
 tablero de cancha alcanza; los mensajes se validan antes de dibujarse para que
 uno mal formado no rompa la pantalla.
+
+## Las estadísticas del torneo
+
+`/torneo` sirve para llevar las estadísticas de cada jugador durante un torneo
+y premiar a los mejores al final. Se cargan los equipos con sus jugadores
+(número y nombre), se arma cada partido y se anota jugada por jugada: se toca
+al jugador y después qué hizo.
+
+| Fundamento | Opciones                        | Qué hace con el marcador    |
+| ---------- | ------------------------------- | --------------------------- |
+| Saque      | Ace · En juego · Error          | Ace suma; error, al rival   |
+| Recepción  | Perfecta · Buena · Mala · Error | Error, punto para el rival  |
+| Ataque     | Punto · En juego · Error        | Punto suma; error, al rival |
+| Bloqueo    | Punto · Toque · Error           | Punto suma; error, al rival |
+
+Un partido no guarda el marcador sino la lista de jugadas: el marcador se
+rearma reproduciéndolas con las reglas del tablero (`lib/tablero.ts`). Así
+deshacer es sacar la última jugada y el marcador no puede desfasarse de las
+estadísticas. Para los puntos que no son de nadie (un error del rival que no
+se cargó, una falta) está **+ Punto sin jugador**.
+
+Ojo con anotar dos veces el mismo punto: un ace y el error de recepción del
+otro lado son la misma pelota. Conviene anotar sólo uno de los dos.
+
+Los premios (`lib/torneo.ts`) son una sugerencia sobre lo cargado:
+
+- **MVP**: puntos (ataque + bloqueo + ace) menos errores.
+- **Mejor atacante**: puntos de ataque.
+- **Mejor bloqueador**: puntos de bloqueo.
+- **Mejor sacador**: aces.
+- **Mejor receptor**: promedio de 0 a 3 (perfecta 3, buena 2, mala 1, error
+  0), con un mínimo de recepciones para que no gane uno que recibió una sola.
+
+Como el tablero, todo queda en el navegador (`localStorage`) y anda sin
+internet. Por eso hay **Exportar** e **Importar**: el torneo baja a un .json
+que se puede guardar o abrir en otro celu. Si dos personas cargan partidos en
+dos celus distintos, hoy no se juntan solos.
 
 ## Cómo funcionan los turnos fijos
 
