@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
- * Apps Android del club. Son tres, armadas con el mismo proyecto nativo:
+ * Apps Android del club. Son cuatro, armadas con el mismo proyecto nativo:
  *
  * - **Matter** (`npm run apk`): el panel de los dueños, abre /admin.
  * - **Matter Tablero** (`npm run apk:tablero`): el control del tablero de vóley
@@ -9,6 +9,10 @@ import type { CapacitorConfig } from "@capacitor/cli";
  *   `-Ptablero` (ver android/app/build.gradle).
  * - **Matter Torneo** (`npm run apk:torneo`): la carga del torneo, abre
  *   /torneo. Se elige con APP=torneo y `-Ptorneo`.
+ * - **Matter Tele** (`npm run apk:tele`): la pantalla sola de la tele, abre
+ *   /tablero/tele. Pensada para instalarse en un Android TV / Google TV / Fire
+ *   TV Stick: se prende la tele y ya está mostrando el marcador, sin tipear
+ *   ninguna URL cada vez. Se elige con APP=tele y `-Ptele`.
  *
  * Se pueden tener instaladas todas a la vez: tienen distinto appId.
  *
@@ -28,6 +32,7 @@ const APPS = {
   panel: { appId: "com.matterclub.panel", appName: "Matter", ruta: "/admin" },
   tablero: { appId: "com.matterclub.tablero", appName: "Matter Tablero", ruta: "/tablero" },
   torneo: { appId: "com.matterclub.torneo", appName: "Matter Torneo", ruta: "/torneo" },
+  tele: { appId: "com.matterclub.tele", appName: "Matter Tele", ruta: "/tablero/tele" },
 };
 const app = APPS[process.env.APP as keyof typeof APPS] ?? APPS.panel;
 

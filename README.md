@@ -7,7 +7,7 @@ Tailwind 4 + TypeScript.
 npm run dev            # http://localhost:3000
 npm run build:estatico # lo que se publica (genera out/)
 npx eslint .           # lint
-npm run apk            # genera matter-panel.apk para los dueños (también apk:tablero y apk:torneo)
+npm run apk            # genera matter-panel.apk para los dueños (también apk:tablero, apk:torneo y apk:tele)
 ```
 
 Publicado en <https://matterclub.netlify.app/>
@@ -241,9 +241,27 @@ para anotar los partidos del torneo en el celu. Se genera con
 apague la pantalla. Los datos del torneo quedan en el celu, dentro de la app:
 desinstalarla los borra, así que conviene exportar el torneo antes.
 
+### La app de la tele
+
+La cuarta, **Matter Tele** (`com.matterclub.tele`), abre directo
+`/tablero/tele`: es la pantalla sola, sin botones. Pensada para instalarse en
+un Android TV, Google TV o Fire TV Stick conectado a la tele por HDMI y por
+wifi: se prende la tele, se abre la app y ya muestra el código para
+enlazarla, sin tener que escribir ninguna URL cada vez. Se genera con
+`npm run apk:tele` y queda en `matter-tele.apk`.
+
+Para que aparezca en el launcher de Android TV (si no, queda instalada pero
+invisible) la actividad principal declara también la categoría
+`LEANBACK_LAUNCHER`, además de la normal; no le cambia nada a las otras tres
+apps, que siguen pensadas para un celu con pantalla táctil.
+
+Si la tele es "smart" con su propio sistema (Tizen, webOS) y no corre Android,
+este APK no sirve: ahí la única opción es abrir `/tablero/tele` a mano desde
+el navegador propio de la tele.
+
 ### Armarlas en GitHub
 
-Si no hay SDK de Android a mano, los tres APK también se arman en GitHub
+Si no hay SDK de Android a mano, los cuatro APK también se arman en GitHub
 (`.github/workflows/apk.yml`): corre solo cuando cambia algo de las apps, y a
 mano desde **Actions → APK → Run workflow**, eligiendo cuál. El APK queda para
 descargar en la corrida, dentro de un .zip, durante 30 días.

@@ -29,7 +29,14 @@ export interface Partido {
   /** Cambio de lado: dibuja la visita a la izquierda. */
   invertido: boolean;
   ganador: Equipo | null;
+  /** Tiempos pedidos en este set. Se reinicia al terminar el set, como en la cancha. */
+  tiempos: Record<Equipo, number>;
+  /** El tiempo en curso, si hay uno. */
+  tiempo: { equipo: Equipo; inicio: number } | null;
 }
+
+export const TIEMPOS_POR_SET = 2;
+export const DURACION_TIEMPO_MS = 30_000;
 
 /** Lo que pasó con el último punto, para decidir qué festejo mostrar. */
 export type Resultado =
@@ -54,6 +61,8 @@ export function partidoNuevo(previo?: Partido): Partido {
     setsParaGanar: previo?.setsParaGanar ?? 3,
     invertido: false,
     ganador: null,
+    tiempos: { local: 0, visita: 0 },
+    tiempo: null,
   };
 }
 
@@ -117,7 +126,23 @@ export function anotar(
       jugados: [...p.jugados, set],
       saque: equipo,
       ganador,
+      // Cada set trae sus propios tiempos, como en la cancha.
+      tiempos: ganador ? p.tiempos : { local: 0, visita: 0 },
     },
     resultado: { tipo: ganador ? "partido" : "set", jugada, equipo, set },
   };
+}
+
+/** Si el equipo todavía puede pedir uno: no hay otro en curso, no terminó el partido y no gastó los dos. */
+export function puedePedirTiempo(p: Partido, e: Equipo): boolean {
+  return !p.ganador && !p.tiempo && p.tiempos[e] < TIEMPOS_POR_SET;
+}
+
+export function pedirTiempo(p: Partido, e: Equipo): Partido | null {
+  if (!puedePedirTiempo(p, e)) return null;
+  return { ...p, tiempo: { equipo: e, inicio: Date.now() }, tiempos: { ...p.tiempos, [e]: p.tiempos[e] + 1 } };
+}
+
+export function terminarTiempo(p: Partido): Partido {
+  return p.tiempo ? { ...p, tiempo: null } : p;
 }

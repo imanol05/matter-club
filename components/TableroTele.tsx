@@ -16,6 +16,7 @@ import {
   Cabecera,
   Mitad,
   Pie,
+  TiempoMuerto,
   duracionAnuncio,
   sacudir,
   useEnNavegador,
@@ -133,7 +134,11 @@ function TeleViva() {
 
       <Pie partido={partido} />
 
-      {anuncio && <Anuncio key={anuncio.id} resultado={anuncio.resultado} partido={partido} />}
+      {partido.tiempo ? (
+        <TiempoMuerto partido={partido} />
+      ) : (
+        anuncio && <Anuncio key={anuncio.id} resultado={anuncio.resultado} partido={partido} />
+      )}
     </div>
   );
 }

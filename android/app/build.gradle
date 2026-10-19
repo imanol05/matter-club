@@ -1,12 +1,13 @@
 apply plugin: 'com.android.application'
 
-// El mismo proyecto arma tres apps: el panel de los dueños (por defecto), el
-// control del tablero de vóley (con `-Ptablero`, ver `npm run apk:tablero`) y
-// la carga del torneo (con `-Ptorneo`, ver `npm run apk:torneo`).
+// El mismo proyecto arma cuatro apps: el panel de los dueños (por defecto), el
+// control del tablero de vóley (con `-Ptablero`, ver `npm run apk:tablero`),
+// la carga del torneo (con `-Ptorneo`, ver `npm run apk:torneo`) y la pantalla
+// sola de la tele (con `-Ptele`, ver `npm run apk:tele`).
 // Distinto applicationId para que puedan estar instaladas todas a la vez.
 // La dirección que abre cada una la pone capacitor.config.ts.
-def app = project.hasProperty('torneo') ? 'torneo' : project.hasProperty('tablero') ? 'tablero' : 'panel'
-def nombre = [panel: 'Matter', tablero: 'Matter Tablero', torneo: 'Matter Torneo'][app]
+def app = project.hasProperty('torneo') ? 'torneo' : project.hasProperty('tablero') ? 'tablero' : project.hasProperty('tele') ? 'tele' : 'panel'
+def nombre = [panel: 'Matter', tablero: 'Matter Tablero', torneo: 'Matter Torneo', tele: 'Matter Tele'][app]
 
 android {
     namespace = "com.matterclub.panel"
