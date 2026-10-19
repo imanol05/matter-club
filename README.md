@@ -7,7 +7,7 @@ Tailwind 4 + TypeScript.
 npm run dev            # http://localhost:3000
 npm run build:estatico # lo que se publica (genera out/)
 npx eslint .           # lint
-npm run apk            # genera matter-panel.apk para los dueños
+npm run apk            # genera matter-panel.apk para los dueños (también apk:tablero y apk:torneo)
 ```
 
 Publicado en <https://matterclub.netlify.app/>
@@ -228,15 +228,25 @@ Con el mismo proyecto Android sale una segunda app, **Matter Tablero**, que
 abre `/tablero` en vez de `/admin`: es el control del marcador de vóley en el
 celu. Se genera con `npm run apk:tablero` y queda en `matter-tablero.apk`.
 
-Si no hay SDK de Android a mano, los dos APK también se arman en GitHub
-(`.github/workflows/apk.yml`): corre solo cuando cambia algo de las apps, y a
-mano desde **Actions → APK → Run workflow**. El APK queda para descargar en la
-corrida, dentro de un .zip, durante 30 días.
-
 Tiene otro `applicationId` (`com.matterclub.tablero`), así que se puede tener
 instalada junto con la de los dueños. Además no deja que se apague la pantalla
 mientras está abierta. Igual que la otra, abre el sitio publicado: muestra lo
 que esté en `main`.
+
+### La app del torneo
+
+La tercera, **Matter Torneo** (`com.matterclub.torneo`), abre `/torneo`: es
+para anotar los partidos del torneo en el celu. Se genera con
+`npm run apk:torneo` y queda en `matter-torneo.apk`. Tampoco deja que se
+apague la pantalla. Los datos del torneo quedan en el celu, dentro de la app:
+desinstalarla los borra, así que conviene exportar el torneo antes.
+
+### Armarlas en GitHub
+
+Si no hay SDK de Android a mano, los tres APK también se arman en GitHub
+(`.github/workflows/apk.yml`): corre solo cuando cambia algo de las apps, y a
+mano desde **Actions → APK → Run workflow**, eligiendo cuál. El APK queda para
+descargar en la corrida, dentro de un .zip, durante 30 días.
 
 ## El aviso al dueño va por Telegram
 

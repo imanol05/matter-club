@@ -15,7 +15,7 @@ on:
       app:
         description: "Qué app armar"
         type: choice
-        options: [tablero, panel]
+        options: [tablero, torneo, panel]
         default: tablero
   push:
     branches: [main, claude/volleyball-scoreboard-animations-xfs4le]
@@ -52,12 +52,12 @@ jobs:
 
       - name: Sincronizar Capacitor
         run: |
-          if [ "$APP" = "tablero" ]; then APP=tablero npx cap sync android; else APP= npx cap sync android; fi
+          if [ "$APP" = "panel" ]; then APP= npx cap sync android; else npx cap sync android; fi
 
       - name: Compilar
         working-directory: android
         run: |
-          if [ "$APP" = "tablero" ]; then EXTRA=-Ptablero; else EXTRA=; fi
+          if [ "$APP" = "panel" ]; then EXTRA=; else EXTRA="-P$APP"; fi
           ./gradlew assembleDebug $EXTRA --no-daemon
 
       - name: Nombrar el APK
