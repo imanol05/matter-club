@@ -15,7 +15,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { duracionAnuncio, useSinApagar, type AnuncioActivo } from "./MarcadorVoley";
+import { Anillo } from "./Marca";
+import { Pelota, duracionAnuncio, useSinApagar, type AnuncioActivo } from "./MarcadorVoley";
 import { DialogoTele, Modal } from "./Tablero";
 import { BOTON } from "./TorneoComun";
 import { useTele } from "./useTele";
@@ -83,8 +84,9 @@ export function CargaPartido({
   const [dialogoTele, setDialogoTele] = useState(false);
   const [tele, setTele] = useState<string | null>(leerTele);
   const [anuncio, setAnuncio] = useState<AnuncioActivo | null>(null);
-  const [rotacionPendiente, setRotacionPendiente] = useState<Lado | null>(null);
+  const [rotacionAvisada, setRotacionAvisada] = useState<{ lado: Lado; id: number } | null>(null);
   const [verTodos, setVerTodos] = useState(false);
+  const [moneda, setMoneda] = useState(false);
 
   const { marcador: m } = useMemo(() => repasar(torneo, partido), [torneo, partido]);
   const terminado = m.ganador !== null;
@@ -96,15 +98,27 @@ export function CargaPartido({
   useSinApagar();
   const teleConectada = useTele(tele, m, anuncio);
 
-  // Apenas un lado recupera el saque, toca rotar: el ref guarda el saque de
-  // la jugada anterior para notar el cambio sin volver a avisar en cada punto
-  // mientras ese mismo lado siga sacando.
+  // Apenas un lado recupera el saque, rota solo: el ref guarda el saque de la
+  // jugada anterior para notar el cambio sin repetirlo en cada punto mientras
+  // ese mismo lado siga sacando. El aviso es sólo para que se vea en la
+  // pantalla qué pasó; no hace falta tocar nada para que valga.
   const saqueAnterior = useRef<Lado | null>(m.saque);
   useEffect(() => {
     const lado = debeRotar(saqueAnterior.current, m.saque);
     saqueAnterior.current = m.saque;
-    if (lado && partido.alineacion?.[lado]) setRotacionPendiente(lado);
-  }, [m.saque, partido.alineacion]);
+    if (!lado) return;
+    const lugares = partido.alineacion?.[lado];
+    if (!lugares) return;
+    onCambiar((p) => ({ ...p, alineacion: { ...p.alineacion, [lado]: rotar(lugares) } }));
+    setRotacionAvisada({ lado, id: Date.now() });
+  }, [m.saque, partido.alineacion, onCambiar]);
+
+  // El aviso de rotación se va solo.
+  useEffect(() => {
+    if (!rotacionAvisada) return;
+    const t = setTimeout(() => setRotacionAvisada(null), 2500);
+    return () => clearTimeout(t);
+  }, [rotacionAvisada]);
 
   useEffect(() => {
     try {
@@ -149,17 +163,19 @@ export function CargaPartido({
   };
   const jugadorDe = (lado: Lado, id: string | null) => equipos[lado]?.jugadores.find((j) => j.id === id);
 
-  const aplicarRotacion = (lado: Lado) => {
+  /** Para corregir a mano: la rotación automática ya cubre el caso normal. */
+  const rotarAMano = (lado: Lado) => {
     onCambiar((p) => {
       const lugares = p.alineacion?.[lado];
       if (!lugares) return p;
       return { ...p, alineacion: { ...p.alineacion, [lado]: rotar(lugares) } };
     });
-    setRotacionPendiente(null);
   };
 
   const guardarAlineacion = (lado: Lado, lugares: LugarRotacion[]) =>
     onCambiar((p) => ({ ...p, alineacion: { ...p.alineacion, [lado]: lugares } }));
+
+  const elegirSacaPrimero = (lado: Lado) => onCambiar((p) => ({ ...p, sacaPrimero: lado }));
 
   /** Suma acciones y, si alguna hizo un punto, le avisa a la tele para el festejo. */
   const agregar = useCallback(
@@ -206,7 +222,7 @@ export function CargaPartido({
     setPendiente(null);
     setElegido(null);
     setAnuncio(null);
-    setRotacionPendiente(null);
+    setRotacionAvisada(null);
   };
 
   const puntoSinJugador = (lado: Lado) => {
@@ -257,6 +273,24 @@ export function CargaPartido({
         </button>
       </header>
 
+      {/* Quién saca primero: se decide una vez, antes del primer punto. */}
+      {partido.acciones.length === 0 && !partido.sacaPrimero && (
+        <div className="mx-3 mb-1 space-y-2 rounded-xl border border-borde bg-carbon-2 p-3 text-center">
+          <p className="text-sm text-tenue">¿Quién saca primero? Se suele decidir por sorteo.</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => elegirSacaPrimero("local")} className={`${BOTON} flex-1`}>
+              Saca {m.nombres.local}
+            </button>
+            <button type="button" onClick={() => elegirSacaPrimero("visita")} className={`${BOTON} flex-1`}>
+              Saca {m.nombres.visita}
+            </button>
+          </div>
+          <button type="button" onClick={() => setMoneda(true)} className="text-xs text-tenue underline hover:text-hueso">
+            🪙 Mejor lo sorteamos con una moneda
+          </button>
+        </div>
+      )}
+
       {/* Marcador */}
       <div className="grid grid-cols-2 gap-2 px-3">
         {(["local", "visita"] as const).map((lado) => (
@@ -299,6 +333,7 @@ export function CargaPartido({
             setElegido((e) => (e?.lado === "local" && e.id === id ? null : { lado: "local", id }))
           }
           onAlinear={() => setAlineando("local")}
+          onRotar={() => rotarAMano("local")}
           primeraFila="atras"
         />
         <div className="flex items-center gap-2 py-0.5 text-[0.6rem] tracking-[0.3em] text-tenue uppercase">
@@ -317,20 +352,18 @@ export function CargaPartido({
             setElegido((e) => (e?.lado === "visita" && e.id === id ? null : { lado: "visita", id }))
           }
           onAlinear={() => setAlineando("visita")}
+          onRotar={() => rotarAMano("visita")}
           primeraFila="adelante"
         />
       </div>
 
-      {rotacionPendiente && (
-        <div className="mx-3 mt-2 flex items-center justify-between gap-3 rounded-xl border-2 border-emerald-500/60 bg-emerald-500/10 px-3 py-2">
-          <p className="text-sm font-semibold">{m.nombres[rotacionPendiente]} recuperó el saque: toca rotar.</p>
-          <button
-            type="button"
-            onClick={() => aplicarRotacion(rotacionPendiente)}
-            className={`${BOTON} shrink-0 border-emerald-500/60`}
-          >
-            ↻ Rotar
-          </button>
+      {/* Rota sola apenas se recupera el saque; esto es sólo para que se note. */}
+      {rotacionAvisada && (
+        <div
+          key={rotacionAvisada.id}
+          className="tablero-sube mx-3 mt-2 rounded-xl border-2 border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-center text-sm font-semibold"
+        >
+          ↻ {m.nombres[rotacionAvisada.lado]} recuperó el saque y rotó
         </div>
       )}
 
@@ -444,6 +477,10 @@ export function CargaPartido({
         />
       )}
 
+      {moneda && (
+        <DialogoMoneda nombres={m.nombres} onElegir={elegirSacaPrimero} onCerrar={() => setMoneda(false)} />
+      )}
+
       {dialogoTele && (
         <DialogoTele tele={tele} conectada={teleConectada} onEnlazar={setTele} onCerrar={() => setDialogoTele(false)} />
       )}
@@ -528,6 +565,7 @@ function EquipoEnCancha({
   bloqueado,
   onElegir,
   onAlinear,
+  onRotar,
   primeraFila,
 }: {
   lado: Lado;
@@ -538,15 +576,23 @@ function EquipoEnCancha({
   bloqueado: boolean;
   onElegir: (id: string) => void;
   onAlinear: () => void;
+  onRotar: () => void;
   primeraFila: "adelante" | "atras";
 }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs text-tenue">
         <span className="font-semibold text-hueso">{nombre}</span>
-        <button type="button" onClick={onAlinear} className="underline hover:text-hueso">
-          Alineación
-        </button>
+        <div className="flex items-center gap-2">
+          {tieneAlineacion && (
+            <button type="button" onClick={onRotar} title="Rotar a mano" className="underline hover:text-hueso">
+              ↻ Rotar
+            </button>
+          )}
+          <button type="button" onClick={onAlinear} className="underline hover:text-hueso">
+            Alineación
+          </button>
+        </div>
       </div>
       {tieneAlineacion ? (
         <GrillaCancha
@@ -563,6 +609,94 @@ function EquipoEnCancha({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * El sorteo de quién saca primero, con una moneda: el escudo de Matter de un
+ * lado y la pelota del otro. Cada cara es un lado fijo (escudo = local,
+ * pelota = visita) para no tener que elegir nada antes de tirarla.
+ */
+function DialogoMoneda({
+  nombres,
+  onElegir,
+  onCerrar,
+}: {
+  nombres: Record<Lado, string>;
+  onElegir: (lado: Lado) => void;
+  onCerrar: () => void;
+}) {
+  const [angulo, setAngulo] = useState(0);
+  const [girando, setGirando] = useState(false);
+  const [resultado, setResultado] = useState<Lado | null>(null);
+
+  const girar = () => {
+    if (girando) return;
+    setResultado(null);
+    setGirando(true);
+    const cara: Lado = Math.random() < 0.5 ? "local" : "visita";
+    const vueltas = 4 + Math.floor(Math.random() * 3);
+    setAngulo((a) => a - (a % 360) + vueltas * 360 + (cara === "visita" ? 180 : 0));
+    setTimeout(() => {
+      setGirando(false);
+      setResultado(cara);
+    }, 1400);
+  };
+
+  return (
+    <Modal titulo="Sorteo con moneda" onCerrar={onCerrar}>
+      <p className="text-center text-sm text-tenue">
+        Escudo = saca {nombres.local}. Pelota = saca {nombres.visita}.
+      </p>
+      <div className="mx-auto my-5 size-32" style={{ perspective: "800px" }}>
+        <div
+          className="relative size-full"
+          style={{
+            transformStyle: "preserve-3d",
+            transform: `rotateY(${angulo}deg)`,
+            transition: "transform 1400ms cubic-bezier(0.2, 0.6, 0.3, 1)",
+          }}
+        >
+          <div
+            className="absolute inset-0 flex items-center justify-center rounded-full border-4 border-hueso/20 bg-carbon-2"
+            style={{ backfaceVisibility: "hidden" }}
+          >
+            <Anillo className="size-24" />
+          </div>
+          <div
+            className="absolute inset-0 flex items-center justify-center rounded-full border-4 border-hueso/20 bg-carbon-2"
+            style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+          >
+            <Pelota className="size-20 text-hueso" />
+          </div>
+        </div>
+      </div>
+
+      {resultado && !girando ? (
+        <div className="space-y-3 text-center">
+          <p className="text-lg font-bold">Saca {nombres[resultado]}</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={girar} className={`${BOTON} flex-1 text-tenue`}>
+              Girar de nuevo
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onElegir(resultado);
+                onCerrar();
+              }}
+              className={`${BOTON} flex-1 border-emerald-500/60`}
+            >
+              Listo, confirmar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={girar} disabled={girando} className={`${BOTON} w-full`}>
+          {girando ? "Girando…" : "🪙 Girar moneda"}
+        </button>
+      )}
+    </Modal>
   );
 }
 
