@@ -173,6 +173,8 @@ export interface PartidoTorneo {
    * Sin dato, los primeros seis de la lista, sin rotar y sin líbero.
    */
   alineacion?: Partial<Record<Lado, LugarRotacion[]>>;
+  /** Quién saca primero, decidido por sorteo antes de arrancar. */
+  sacaPrimero?: Lado;
 }
 
 export interface Torneo {
@@ -241,6 +243,9 @@ export function repasar(
     ...partidoNuevo(),
     nombres: { local: nombreEquipo(t, p.local), visita: nombreEquipo(t, p.visita) },
     setsParaGanar: p.setsParaGanar,
+    // Sin esto el primer punto definía quién sacaba por descarte (quien lo
+    // ganaba), aunque no fuera quien realmente sacó primero.
+    saque: p.sacaPrimero ?? null,
   };
   let ultimo: { indice: number; resultado: Resultado } | null = null;
   p.acciones.forEach((a, indice) => {
