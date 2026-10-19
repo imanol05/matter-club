@@ -15,7 +15,7 @@ on:
       app:
         description: "Qué app armar"
         type: choice
-        options: [tablero, torneo, panel]
+        options: [tablero, torneo, tele, panel]
         default: tablero
   push:
     branches: [main, claude/volleyball-scoreboard-animations-xfs4le]
