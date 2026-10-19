@@ -227,12 +227,20 @@ function TarjetaEquipo({
       ? `${n} tiene jugadas cargadas: si lo sacás, se pierden sus estadísticas (el marcador no cambia). ¿Sacarlo igual?`
       : `¿Sacar a ${n}?`;
     if (!confirm(aviso)) return;
-    onCambiar((eq) => ({ ...eq, jugadores: eq.jugadores.filter((j) => j.id !== id) }));
+    onCambiar((eq) => ({
+      ...eq,
+      jugadores: eq.jugadores.filter((j) => j.id !== id),
+      liberoId: eq.liberoId === id ? undefined : eq.liberoId,
+    }));
   };
 
   // Corregir nombre o número no toca las jugadas: van atadas al id, no al nombre.
   const corregir = (id: string, cambio: Partial<Jugador>) =>
     onCambiar((eq) => ({ ...eq, jugadores: eq.jugadores.map((j) => (j.id === id ? { ...j, ...cambio } : j)) }));
+
+  // Uno solo por equipo: marcar a otro le saca la marca al anterior.
+  const marcarLibero = (id: string) =>
+    onCambiar((eq) => ({ ...eq, liberoId: eq.liberoId === id ? undefined : id }));
 
   return (
     <section className="rounded-2xl border border-borde bg-noche/60 p-3">
@@ -267,6 +275,17 @@ function TarjetaEquipo({
             />
             <button
               type="button"
+              onClick={() => marcarLibero(j.id)}
+              aria-pressed={equipo.liberoId === j.id}
+              title="Marcar como líbero"
+              className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs font-bold ${
+                equipo.liberoId === j.id ? "bg-emerald-500/20 text-emerald-400" : "text-tenue hover:text-hueso"
+              }`}
+            >
+              L
+            </button>
+            <button
+              type="button"
               onClick={() => quitar(j.id, j.nombre)}
               aria-label={`Sacar a ${j.nombre}`}
               className="px-1 text-tenue hover:text-bordo-2"
@@ -276,6 +295,11 @@ function TarjetaEquipo({
           </li>
         ))}
       </ul>
+      {equipo.liberoId && (
+        <p className="mt-1 text-xs text-tenue">
+          Líbero: {equipo.jugadores.find((j) => j.id === equipo.liberoId)?.nombre}
+        </p>
+      )}
 
       <form onSubmit={agregar} className="mt-3 flex gap-2">
         <input

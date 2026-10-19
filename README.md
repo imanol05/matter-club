@@ -89,9 +89,19 @@ están en `lib/torneo.ts`.
 
 ### En la cancha
 
-Abajo del marcador aparecen sólo los jugadores **en cancha**: arrancan los seis
-primeros de la lista y con **Cambios** se mete o se saca a cualquiera (el
-líbero también).
+Abajo del marcador se arma la **alineación**: se tocan los 6 titulares en el
+orden en que van a sacar y se dibujan en una cancha (3 adelante, 3 atrás), no
+en una lista plana. Si el equipo tiene **líbero** (se marca con la "L" en
+Equipos) se elige en qué lugar entra; desde ahí el programa lo pone y lo saca
+solo, sin tocar nada: juega cuando a ese lugar le toca atrás y se banca al
+titular cuando le toca adelante, porque el líbero nunca puede jugar adelante.
+Según la regla FIVB vigente desde 2021 sí puede sacar en ese único lugar, así
+que puede aparecer "L" y "saca" juntos.
+
+Apenas un equipo recupera el saque (le ganó el punto al que estaba sacando)
+aparece un aviso para **rotar**: un toque corre a todos un lugar,
+como se rota de verdad en la cancha. Las reglas están en `lib/torneo.ts`
+(`alineacionEnJuego`, `debeRotar`, `rotar`).
 
 Con el botón de la tele, el marcador del partido se manda a una tele que tenga
 abierto `/tablero/tele`, igual que desde el tablero: mismo código de 4 letras,
