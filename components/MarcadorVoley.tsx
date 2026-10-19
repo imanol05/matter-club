@@ -296,9 +296,10 @@ export function Mitad({
             type="button"
             disabled={terminado}
             onClick={() => onJugar(equipo, "bloqueo")}
-            className="rounded-2xl border border-borde bg-carbon-2 py-2 text-sm font-black tracking-[0.12em] whitespace-nowrap text-hueso uppercase transition hover:border-hueso/40 active:scale-95 disabled:opacity-40 sm:py-3 sm:text-xl [@media(max-height:500px)]:py-1.5 [@media(max-height:500px)]:text-sm"
+            className="flex flex-col items-center justify-center rounded-2xl border border-borde bg-carbon-2 py-2 text-[0.65rem] leading-tight font-black tracking-tight text-hueso uppercase transition hover:border-hueso/40 active:scale-95 disabled:opacity-40 sm:py-3 sm:text-base sm:tracking-[0.05em] [@media(max-height:500px)]:py-1.5 [@media(max-height:500px)]:text-[0.6rem]"
           >
-            Monster block
+            <span>Monster</span>
+            <span>Block</span>
           </button>
           {onTiempo && (
             <button
