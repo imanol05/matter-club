@@ -20,6 +20,10 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <!-- Para que Matter Tele aparezca en el launcher de Android TV / Google TV
+                     (si no, queda instalada pero invisible en la pantalla de inicio). Al
+                     resto de las apps (celu) no les cambia nada. -->
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
 
         </activity>
@@ -38,4 +42,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Android TV no tiene touch ni cámara/micrófono; ninguna de las cuatro
+         apps los necesita, así que se marcan opcionales para todas. -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
 </manifest>

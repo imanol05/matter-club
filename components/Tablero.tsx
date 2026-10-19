@@ -24,16 +24,26 @@ import {
   Cabecera,
   Mitad,
   Pie,
+  TiempoMuerto,
   duracionAnuncio,
-  pantallaCompleta,
   sacudir,
   useEnNavegador,
+  usePantallaCompleta,
   useSinApagar,
   type AnuncioActivo,
 } from "./MarcadorVoley";
 import { useTele } from "./useTele";
 import { LARGO_CODIGO, codigoValido, normalizarCodigo } from "@/lib/enlace";
-import { anotar, partidoNuevo, type Equipo, type Jugada, type Partido } from "@/lib/tablero";
+import {
+  DURACION_TIEMPO_MS,
+  anotar,
+  partidoNuevo,
+  pedirTiempo,
+  terminarTiempo,
+  type Equipo,
+  type Jugada,
+  type Partido,
+} from "@/lib/tablero";
 
 const CLAVE = "matter:tablero";
 const MAX_DESHACER = 200;
@@ -45,13 +55,23 @@ type Guardado = {
   tele: string | null;
 };
 
+/** Partidos guardados antes del tiempo no tienen estos campos: se completan al leerlos. */
+function conTiempos(p: Partido): Partido {
+  return { ...p, tiempos: p.tiempos ?? { local: 0, visita: 0 }, tiempo: p.tiempo ?? null };
+}
+
 function leerGuardado(): Guardado {
   try {
     const crudo = localStorage.getItem(CLAVE);
     if (crudo) {
       const g = JSON.parse(crudo) as Guardado;
       if (g?.partido?.puntos && Array.isArray(g.pila)) {
-        return { ...g, tele: codigoValido(g.tele ?? "") ? g.tele : null };
+        return {
+          ...g,
+          partido: conTiempos(g.partido),
+          pila: g.pila.map(conTiempos),
+          tele: codigoValido(g.tele ?? "") ? g.tele : null,
+        };
       }
     }
   } catch {
@@ -64,6 +84,7 @@ const ATAJOS: { tecla: string; accion: string }[] = [
   { tecla: "A / L", accion: "Punto local / visita" },
   { tecla: "Q / P", accion: "Ace local / visita" },
   { tecla: "Z / M", accion: "Monster block local / visita" },
+  { tecla: "T / Y", accion: "Pedir tiempo local / visita" },
   { tecla: "Retroceso", accion: "Deshacer" },
   { tecla: "F", accion: "Pantalla completa" },
 ];
@@ -107,6 +128,7 @@ function TableroVivo() {
 
   const jugar = useCallback(
     (equipo: Equipo, jugada: Jugada) => {
+      if (partido.tiempo) return;
       const r = anotar(partido, equipo, jugada);
       if (!r) return;
       setEstado((e) => ({
@@ -144,6 +166,30 @@ function TableroVivo() {
     setEstado((e) => ({ ...e, tele: codigo }));
   }, []);
 
+  const pedirTiempoDe = useCallback((equipo: Equipo) => {
+    setEstado((e) => {
+      const partido = pedirTiempo(e.partido, equipo);
+      return partido ? { ...e, partido } : e;
+    });
+  }, []);
+
+  const cortarTiempo = useCallback(() => {
+    setEstado((e) => ({ ...e, partido: terminarTiempo(e.partido) }));
+  }, []);
+
+  // El tiempo se corta solo a los 30s, lo haya visto alguien o no. Si ya se
+  // pasó (se volvió a abrir la página con el tiempo vencido), el timeout de
+  // 0ms lo corta en el próximo tick.
+  useEffect(() => {
+    if (!partido.tiempo) return;
+    const restante = DURACION_TIEMPO_MS - (Date.now() - partido.tiempo.inicio);
+    const t = setTimeout(cortarTiempo, Math.max(restante, 0));
+    return () => clearTimeout(t);
+  }, [partido.tiempo, cortarTiempo]);
+
+  const { soportada: hayPantallaCompleta, activa: pantallaActiva, alternar: alternarPantalla } =
+    usePantallaCompleta();
+
   useEffect(() => {
     if (dialogo) return;
     const tecla = (ev: KeyboardEvent) => {
@@ -152,11 +198,13 @@ function TableroVivo() {
         a: () => jugar("local", "punto"),
         q: () => jugar("local", "ace"),
         z: () => jugar("local", "bloqueo"),
+        t: () => pedirTiempoDe("local"),
         l: () => jugar("visita", "punto"),
         p: () => jugar("visita", "ace"),
         m: () => jugar("visita", "bloqueo"),
+        y: () => pedirTiempoDe("visita"),
         backspace: deshacer,
-        f: pantallaCompleta,
+        f: alternarPantalla,
       };
       const accion = acciones[ev.key.toLowerCase()];
       if (accion) {
@@ -166,7 +214,7 @@ function TableroVivo() {
     };
     window.addEventListener("keydown", tecla);
     return () => window.removeEventListener("keydown", tecla);
-  }, [dialogo, jugar, deshacer]);
+  }, [dialogo, jugar, deshacer, pedirTiempoDe, alternarPantalla]);
 
   const orden: Equipo[] = partido.invertido ? ["visita", "local"] : ["local", "visita"];
 
@@ -201,9 +249,18 @@ function TableroVivo() {
             />
           )}
         </button>
-        <BotonIcono etiqueta="Pantalla completa" onClick={pantallaCompleta}>
-          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-        </BotonIcono>
+        {hayPantallaCompleta && (
+          <BotonIcono
+            etiqueta={pantallaActiva ? "Salir de pantalla completa" : "Pantalla completa"}
+            onClick={alternarPantalla}
+          >
+            {pantallaActiva ? (
+              <path d="M9 4v4a1 1 0 0 1-1 1H4M20 9h-4a1 1 0 0 1-1-1V4M9 20v-4a1 1 0 0 0-1-1H4M20 15h-4a1 1 0 0 0-1 1v4" />
+            ) : (
+              <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+            )}
+          </BotonIcono>
+        )}
         <BotonIcono etiqueta="Ajustes" onClick={() => setDialogo("ajustes")}>
           <circle cx="12" cy="12" r="3" />
           <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" />
@@ -214,7 +271,7 @@ function TableroVivo() {
           los botones. */}
       <main className="grid min-h-0 flex-1 grid-cols-2 gap-3 px-3 sm:gap-6 sm:px-6 portrait:grid-cols-1 portrait:grid-rows-2">
         {orden.map((e) => (
-          <Mitad key={e} partido={partido} equipo={e} onJugar={jugar} />
+          <Mitad key={e} partido={partido} equipo={e} onJugar={jugar} onTiempo={pedirTiempoDe} />
         ))}
       </main>
 
@@ -225,14 +282,18 @@ function TableroVivo() {
         onCambiarLados={() => cambiar({ invertido: !partido.invertido })}
       />
 
-      {anuncio && (
-        <Anuncio
-          key={anuncio.id}
-          resultado={anuncio.resultado}
-          partido={partido}
-          onNuevo={nuevoPartido}
-          onDeshacer={deshacer}
-        />
+      {partido.tiempo ? (
+        <TiempoMuerto partido={partido} onTerminar={cortarTiempo} />
+      ) : (
+        anuncio && (
+          <Anuncio
+            key={anuncio.id}
+            resultado={anuncio.resultado}
+            partido={partido}
+            onNuevo={nuevoPartido}
+            onDeshacer={deshacer}
+          />
+        )
       )}
 
       {dialogo === "ajustes" && (

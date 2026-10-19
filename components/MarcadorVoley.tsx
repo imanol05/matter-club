@@ -9,13 +9,16 @@
  * cada una le pasa sólo lo que puede hacer: el control pasa acciones, la tele no.
  */
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import { Anillo } from "./Marca";
 import {
+  DURACION_TIEMPO_MS,
   esDecisivo,
   numeroDeSet,
+  puedePedirTiempo,
   puntosParaSet,
+  TIEMPOS_POR_SET,
   tienePuntoDePartido,
   tienePuntoDeSet,
   type Equipo,
@@ -99,9 +102,43 @@ export function sacudir(el: HTMLElement | null, jugada: Jugada) {
   );
 }
 
-export function pantallaCompleta() {
-  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-  else document.documentElement.requestFullscreen?.().catch(() => {});
+/**
+ * Si hay Fullscreen API (en el navegador del celu/compu; no existe en Safari
+ * de iPhone ni, a veces, en el WebView de la app empaquetada), y si está
+ * activa ahora. El ícono y la etiqueta del botón salen de acá, para que se
+ * vea si realmente cambió algo al tocarlo.
+ */
+export function usePantallaCompleta(): { soportada: boolean; activa: boolean; alternar: () => void } {
+  const [activa, setActiva] = useState(false);
+  const soportada =
+    typeof document !== "undefined" && typeof document.documentElement.requestFullscreen === "function";
+
+  useEffect(() => {
+    if (!soportada) return;
+    const avisar = () => setActiva(!!document.fullscreenElement);
+    avisar();
+    document.addEventListener("fullscreenchange", avisar);
+    return () => document.removeEventListener("fullscreenchange", avisar);
+  }, [soportada]);
+
+  const alternar = useCallback(() => {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  }, []);
+
+  return { soportada, activa, alternar };
+}
+
+/** Segundos que faltan de un tiempo que arrancó en `inicioMs`, actualizado en vivo. */
+export function useCuentaRegresiva(inicioMs: number | undefined): number {
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    if (inicioMs === undefined) return;
+    const t = setInterval(() => setAhora(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [inicioMs]);
+  if (inicioMs === undefined) return 0;
+  return Math.max(0, Math.ceil((DURACION_TIEMPO_MS - (ahora - inicioMs)) / 1000));
 }
 
 /* ───────────────────────────── Partes fijas ───────────────────────────── */
@@ -174,10 +211,12 @@ export function Mitad({
   partido,
   equipo,
   onJugar,
+  onTiempo,
 }: {
   partido: Partido;
   equipo: Equipo;
   onJugar?: (e: Equipo, j: Jugada) => void;
+  onTiempo?: (e: Equipo) => void;
 }) {
   const c = COLOR[equipo];
   const saca = partido.saque === equipo;
@@ -244,7 +283,7 @@ export function Mitad({
       </Tarjeta>
 
       {onJugar && (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <button
             type="button"
             disabled={terminado}
@@ -261,6 +300,19 @@ export function Mitad({
           >
             Monster block
           </button>
+          {onTiempo && (
+            <button
+              type="button"
+              disabled={!puedePedirTiempo(partido, equipo)}
+              onClick={() => onTiempo(equipo)}
+              className="flex flex-col items-center justify-center rounded-2xl border border-borde bg-carbon-2 py-2 text-sm font-black tracking-[0.12em] text-hueso uppercase transition hover:border-hueso/40 active:scale-95 disabled:opacity-40 sm:py-3 sm:text-xl [@media(max-height:500px)]:py-1.5 [@media(max-height:500px)]:text-sm"
+            >
+              Tiempo
+              <span className="text-[0.6rem] font-normal tracking-normal text-tenue normal-case sm:text-xs">
+                {TIEMPOS_POR_SET - partido.tiempos[equipo]} de {TIEMPOS_POR_SET}
+              </span>
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -503,6 +555,53 @@ export function Anuncio({
   }
 
   return null;
+}
+
+/**
+ * El tiempo pedido, con la cuenta regresiva. `onTerminar` sólo lo pasa el
+ * control (el celu): ahí se puede cortar antes; la tele sólo mira.
+ */
+export function TiempoMuerto({
+  partido,
+  onTerminar,
+}: {
+  partido: Partido;
+  onTerminar?: () => void;
+}) {
+  const tiempo = partido.tiempo;
+  const restante = useCuentaRegresiva(tiempo?.inicio);
+  if (!tiempo) return null;
+
+  const c = COLOR[tiempo.equipo];
+  const estilo = { "--equipo": c.var } as React.CSSProperties;
+
+  return (
+    <div
+      className="tablero-velo absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-noche/90 text-center backdrop-blur-sm"
+      style={estilo}
+    >
+      <p className="tablero-sube text-sm font-semibold tracking-[0.5em] text-tenue uppercase sm:text-xl">
+        Tiempo
+      </p>
+      <h2
+        className={`tablero-golpe text-[min(12vh,10vw)] leading-none font-black uppercase drop-shadow-[0_0_40px_var(--equipo)] ${c.texto}`}
+      >
+        {partido.nombres[tiempo.equipo]}
+      </h2>
+      <p className="tablero-sube text-[min(30vh,24vw)] leading-none font-black text-hueso tabular-nums">
+        {restante}
+      </p>
+      {onTerminar && (
+        <button
+          type="button"
+          onClick={onTerminar}
+          className="tablero-sube rounded-xl border border-borde px-4 py-2 text-tenue hover:text-hueso"
+        >
+          Terminar tiempo
+        </button>
+      )}
+    </div>
+  );
 }
 
 /**
