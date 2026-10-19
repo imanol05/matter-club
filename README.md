@@ -27,7 +27,7 @@ así que quedó sólo Netlify.
 | `/admin`  | Panel del encargado, detrás de login y con `noindex`               |
 | `/tablero` | Marcador de vóley para mostrar en la tele, con `noindex`         |
 | `/tablero/tele` | La pantalla de la tele, controlada desde `/tablero` en el celu |
-| `/torneo` | Estadísticas por jugador de un torneo y premios, con `noindex` |
+| `/torneo` | Torneo: fixture, estadísticas por jugador y premios, con `noindex` |
 
 `components/TurneroConsulta.tsx` quedó sin uso: era el selector que abría
 WhatsApp cuando todavía no había base de datos y no se podía mostrar
@@ -69,10 +69,34 @@ uno mal formado no rompa la pantalla.
 
 ## Las estadísticas del torneo
 
-`/torneo` sirve para llevar las estadísticas de cada jugador durante un torneo
-y premiar a los mejores al final. Se cargan los equipos con sus jugadores
-(número y nombre), se arma cada partido y se anota jugada por jugada: se toca
-al jugador y después qué hizo.
+`/torneo` sirve para organizar un torneo de 8 equipos, llevar las estadísticas
+de cada jugador y premiar a los mejores al final. Se cargan los equipos con sus
+jugadores (número y nombre, que se pueden corregir sin perder nada: las
+jugadas van atadas al jugador, no al nombre), se arma el fixture y se anota
+cada partido jugada por jugada: se toca al jugador y después qué hizo.
+
+### El fixture
+
+Dos zonas de 4, todos contra todos dentro de la zona (12 partidos). Las zonas
+se reparten a mano o por sorteo. Pasan los dos primeros: semis cruzadas (1°A
+contra 2°B y 1°B contra 2°A), y después final y 3er puesto. Las semis se arman
+cuando terminan las zonas, y la final cuando terminan las semis.
+
+La tabla da los puntos como la FIVB: ganar sin llegar al set decisivo vale 3
+(y 0 al que pierde); si se define en el decisivo, 2 al que gana y 1 al que
+pierde. Desempata el cociente de sets y después el de tantos. Las reglas
+están en `lib/torneo.ts`.
+
+### En la cancha
+
+Abajo del marcador aparecen sólo los jugadores **en cancha**: arrancan los seis
+primeros de la lista y con **Cambios** se mete o se saca a cualquiera (el
+líbero también).
+
+Con el botón de la tele, el marcador del partido se manda a una tele que tenga
+abierto `/tablero/tele`, igual que desde el tablero: mismo código de 4 letras,
+mismos festejos para el ace, el bloqueo y el fin de set. La parte del enlace
+que comparten los dos está en `components/useTele.ts`.
 
 Los partidos son al mejor de 3 sets; en **Partidos** se puede pasar el torneo
 al mejor de 5. El cambio vale para los partidos que se armen después: los que
@@ -93,17 +117,22 @@ deshacer es sacar la última jugada y el marcador no puede desfasarse de las
 estadísticas. Para los puntos que no son de nadie (un error del rival que no
 se cargó, una falta) está **+ Punto sin jugador**.
 
-Ojo con anotar dos veces el mismo punto: un ace y el error de recepción del
-otro lado son la misma pelota, y lo mismo un ataque que hace punto y el error
-de defensa del rival. Conviene anotar sólo uno de los dos. La asistencia no
-mueve el marcador justamente por eso: el punto ya lo anota el ataque.
+Una pelota tiene dos caras: el ace de uno es el error de recepción del otro,
+el punto de ataque es el error de defensa del rival. Para no sumar el punto
+dos veces, después de esas jugadas **la app pregunta por la otra cara** (tras
+un ace, quién no pudo recibir; tras un punto de ataque, quién armó y quién no
+la pudo defender; tras un bloqueo, a quién bloquearon). La respuesta se anota
+para las estadísticas pero queda ligada: no vuelve a mover el marcador. Se
+puede saltear, y deshacer borra la pelota entera con sus respuestas.
 
 Los premios (`lib/torneo.ts`) son una sugerencia sobre lo cargado:
 
 - **Mejor saque**: aces.
 - **Mejor armador**: asistencias.
 - **Mejor receptor**: promedio de 0 a 3 (perfecta 3, buena 2, mala 1, error
-  0), con un mínimo de recepciones para que no gane uno que recibió una sola.
+  0). Compiten los que recibieron al menos un tercio de las pelotas que
+  recibió el que más recibió (y nunca menos de 3), para que no gane uno que
+  recibió una sola. Así el mínimo se acomoda solo al largo del torneo.
 - **Mejor defensa**: defensas buenas.
 - **Mejor bloqueador**: puntos de bloqueo.
 - **Mejor ataque**: puntos de ataque.

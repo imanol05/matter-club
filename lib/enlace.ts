@@ -101,8 +101,11 @@ export function abrirEnlace(
   alRecibir: (m: MensajeTablero) => void,
   alConectar?: () => void,
 ): Enlace {
+  // Después de cerrar no se manda ni se avisa nada: BroadcastChannel tira un
+  // error si se le escribe cerrado, y el aviso de conexión puede llegar tarde.
+  let cerrado = false;
   const recibir = (dato: unknown) => {
-    if (esMensaje(dato)) alRecibir(dato);
+    if (!cerrado && esMensaje(dato)) alRecibir(dato);
   };
 
   const local =
@@ -115,18 +118,22 @@ export function abrirEnlace(
     ?.channel(`tablero:${codigo}`, { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "tablero" }, ({ payload }) => recibir(payload))
     .subscribe((estado) => {
-      if (estado === "SUBSCRIBED") alConectar?.();
+      if (estado === "SUBSCRIBED" && !cerrado) alConectar?.();
     });
 
   // BroadcastChannel está listo en el acto.
-  queueMicrotask(() => alConectar?.());
+  queueMicrotask(() => {
+    if (!cerrado) alConectar?.();
+  });
 
   return {
     enviar(m) {
+      if (cerrado) return;
       local?.postMessage(m);
       canal?.send({ type: "broadcast", event: "tablero", payload: m }).catch(() => {});
     },
     cerrar() {
+      cerrado = true;
       local?.close();
       if (canal) supabase?.removeChannel(canal);
     },

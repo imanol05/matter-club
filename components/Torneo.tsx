@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Estadísticas del torneo: se cargan los equipos con sus jugadores, se anota
- * cada partido jugada por jugada (saque, recepción, ataque, bloqueo) y al final
- * salen los premios.
+ * El torneo: se cargan los equipos con sus jugadores, se arma el fixture, se
+ * anota cada partido jugada por jugada (TorneoPartido.tsx) y al final salen
+ * los premios.
  *
  * Todo vive en el navegador (`localStorage`), igual que el tablero: no hace
  * falta internet en la cancha. Para no depender de un solo celu se puede
@@ -13,32 +13,31 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { Anillo } from "./Marca";
-import { useEnNavegador, useSinApagar } from "./MarcadorVoley";
-import { numeroDeSet } from "@/lib/tablero";
+import { useEnNavegador } from "./MarcadorVoley";
+import { BOTON, CAMPO, FilaPartido, type PropsTorneo as Props } from "./TorneoComun";
+import { VistaFixture } from "./TorneoFixture";
+import { CargaPartido } from "./TorneoPartido";
 import {
   FUNDAMENTOS,
-  MIN_RECEPCIONES,
+  NOMBRE_RONDA,
   esTorneo,
   estadisticas,
-  marcador,
+  minimoRecepciones,
   nombreEquipo,
   normalizar,
   nuevoId,
   premios,
-  tipoAccion,
   torneoNuevo,
-  type Accion,
   type Equipo,
   type Estadistica,
-  type Fundamento,
-  type Lado,
+  type Jugador,
   type PartidoTorneo,
   type Torneo as DatosTorneo,
 } from "@/lib/torneo";
 
 const CLAVE = "matter:torneo";
 
-type Vista = "equipos" | "partidos" | "premios";
+type Vista = "equipos" | "fixture" | "partidos" | "premios";
 
 function leerGuardado(): DatosTorneo {
   try {
@@ -52,11 +51,6 @@ function leerGuardado(): DatosTorneo {
   }
   return torneoNuevo();
 }
-
-const BOTON =
-  "rounded-xl border border-borde bg-carbon-2 px-3 py-2 text-sm font-semibold text-hueso transition hover:border-hueso/40 active:scale-95 disabled:opacity-40";
-const CAMPO =
-  "min-w-0 rounded-xl border border-borde bg-noche px-3 py-2 text-sm text-hueso placeholder:text-tenue focus:border-marino-2 focus:outline-none";
 
 export function Torneo() {
   if (!useEnNavegador()) return <div className="min-h-dvh bg-noche" />;
@@ -82,10 +76,10 @@ function TorneoVivo() {
       <CargaPartido
         torneo={torneo}
         partido={partido}
-        onCambiar={(acciones) =>
+        onCambiar={(f) =>
           setTorneo((t) => ({
             ...t,
-            partidos: t.partidos.map((p) => (p.id === partido.id ? { ...p, acciones } : p)),
+            partidos: t.partidos.map((p) => (p.id === partido.id ? f(p) : p)),
           }))
         }
         onVolver={() => setAbierto(null)}
@@ -109,8 +103,9 @@ function TorneoVivo() {
         {(
           [
             ["equipos", "Equipos"],
+            ["fixture", "Fixture"],
             ["partidos", "Partidos"],
-            ["premios", "Estadísticas y premios"],
+            ["premios", "Premios"],
           ] as const
         ).map(([v, etiqueta]) => (
           <button
@@ -129,6 +124,7 @@ function TorneoVivo() {
       <main className="mx-auto max-w-4xl px-4 pb-10">
         <div className="rounded-b-2xl rounded-tr-2xl bg-carbon p-4">
           {vista === "equipos" && <VistaEquipos torneo={torneo} setTorneo={setTorneo} />}
+          {vista === "fixture" && <VistaFixture torneo={torneo} setTorneo={setTorneo} onAbrir={setAbierto} />}
           {vista === "partidos" && (
             <VistaPartidos torneo={torneo} setTorneo={setTorneo} onAbrir={setAbierto} />
           )}
@@ -139,11 +135,6 @@ function TorneoVivo() {
     </div>
   );
 }
-
-type Props = {
-  torneo: DatosTorneo;
-  setTorneo: React.Dispatch<React.SetStateAction<DatosTorneo>>;
-};
 
 /* ───────────────────────────── Equipos ───────────────────────────── */
 
@@ -239,6 +230,10 @@ function TarjetaEquipo({
     onCambiar((eq) => ({ ...eq, jugadores: eq.jugadores.filter((j) => j.id !== id) }));
   };
 
+  // Corregir nombre o número no toca las jugadas: van atadas al id, no al nombre.
+  const corregir = (id: string, cambio: Partial<Jugador>) =>
+    onCambiar((eq) => ({ ...eq, jugadores: eq.jugadores.map((j) => (j.id === id ? { ...j, ...cambio } : j)) }));
+
   return (
     <section className="rounded-2xl border border-borde bg-noche/60 p-3">
       <div className="flex items-center gap-2">
@@ -256,8 +251,20 @@ function TarjetaEquipo({
       <ul className="mt-2 space-y-1">
         {equipo.jugadores.map((j) => (
           <li key={j.id} className="flex items-center gap-2 text-sm">
-            <span className="w-8 text-right font-bold text-tenue tabular-nums">{j.numero || "–"}</span>
-            <span className="flex-1 truncate">{j.nombre}</span>
+            <input
+              value={j.numero}
+              onChange={(e) => corregir(j.id, { numero: e.target.value })}
+              placeholder="N°"
+              inputMode="numeric"
+              aria-label={`Número de ${j.nombre}`}
+              className="w-10 rounded-md bg-transparent px-1 text-right font-bold text-tenue tabular-nums focus:bg-carbon-2 focus:text-hueso focus:outline-none"
+            />
+            <input
+              value={j.nombre}
+              onChange={(e) => corregir(j.id, { nombre: e.target.value })}
+              aria-label="Nombre del jugador"
+              className="min-w-0 flex-1 rounded-md bg-transparent px-1 focus:bg-carbon-2 focus:outline-none"
+            />
             <button
               type="button"
               onClick={() => quitar(j.id, j.nombre)}
@@ -338,6 +345,10 @@ function VistaPartidos({ torneo, setTorneo, onAbrir }: Props & { onAbrir: (id: s
         <span className="text-xs">(vale para los partidos nuevos)</span>
       </label>
 
+      <p className="text-sm text-tenue">
+        Los partidos del torneo se arman en Fixture. Acá también se puede jugar uno suelto (un amistoso, un
+        desempate); sus estadísticas cuentan para los premios igual.
+      </p>
       <form onSubmit={crear} className="flex flex-wrap items-center gap-2">
         <select value={local} onChange={(e) => setLocal(e.target.value)} className={CAMPO}>
           <option value="">Local…</option>
@@ -366,218 +377,17 @@ function VistaPartidos({ torneo, setTorneo, onAbrir }: Props & { onAbrir: (id: s
       {torneo.partidos.length === 0 && <p className="text-sm text-tenue">Todavía no hay partidos.</p>}
 
       <ul className="space-y-2">
-        {[...torneo.partidos].reverse().map((p) => {
-          const m = marcador(torneo, p);
-          return (
-            <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-borde bg-noche/60 p-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">
-                  {m.nombres.local} <span className="text-tenue">vs</span> {m.nombres.visita}
-                </p>
-                <p className="text-xs text-tenue">
-                  Al mejor de {p.setsParaGanar * 2 - 1} · Sets {m.sets.local}–{m.sets.visita}
-                  {m.jugados.length > 0 && ` (${m.jugados.map((s) => `${s.local}-${s.visita}`).join(", ")})`}
-                  {" · "}
-                  {m.ganador ? `Ganó ${m.nombres[m.ganador]}` : "En juego"}
-                </p>
-              </div>
-              <button type="button" onClick={() => onAbrir(p.id)} className={BOTON}>
-                {m.ganador ? "Ver" : "Seguir"}
-              </button>
-              <button type="button" onClick={() => borrar(p)} className="text-xs text-tenue hover:text-bordo-2">
-                Borrar
-              </button>
-            </li>
-          );
-        })}
+        {[...torneo.partidos].reverse().map((p) => (
+          <FilaPartido
+            key={p.id}
+            torneo={torneo}
+            partido={p}
+            onAbrir={() => onAbrir(p.id)}
+            // Los del fixture se borran desde el fixture, todos juntos.
+            onBorrar={p.ronda ? undefined : () => borrar(p)}
+          />
+        ))}
       </ul>
-    </div>
-  );
-}
-
-/* ───────────────────────────── Carga en vivo ───────────────────────────── */
-
-const LADO_COLOR: Record<Lado, string> = {
-  local: "border-bordo-2 bg-bordo/25",
-  visita: "border-marino-2 bg-marino/40",
-};
-
-function CargaPartido({
-  torneo,
-  partido,
-  onCambiar,
-  onVolver,
-}: {
-  torneo: DatosTorneo;
-  partido: PartidoTorneo;
-  onCambiar: (acciones: Accion[]) => void;
-  onVolver: () => void;
-}) {
-  const [elegido, setElegido] = useState<{ lado: Lado; id: string } | null>(null);
-  const m = useMemo(() => marcador(torneo, partido), [torneo, partido]);
-  const terminado = m.ganador !== null;
-
-  useSinApagar();
-
-  const equipos: Record<Lado, Equipo | undefined> = {
-    local: torneo.equipos.find((e) => e.id === partido.local),
-    visita: torneo.equipos.find((e) => e.id === partido.visita),
-  };
-  const jugador = elegido ? equipos[elegido.lado]?.jugadores.find((j) => j.id === elegido.id) : undefined;
-
-  const sumar = (a: Accion) => {
-    if (terminado) return;
-    onCambiar([...partido.acciones, a]);
-  };
-
-  const anotarAccion = (fundamento: Fundamento, tipo: string) => {
-    if (!elegido) return;
-    sumar({ id: nuevoId(), lado: elegido.lado, jugador: elegido.id, fundamento, tipo });
-    setElegido(null);
-  };
-
-  const nombreDe = (a: Accion) => {
-    if (a.jugador === null) return `Punto ${m.nombres[a.lado]}`;
-    const j = equipos[a.lado]?.jugadores.find((x) => x.id === a.jugador);
-    const t = tipoAccion(a.fundamento, a.tipo);
-    const f = FUNDAMENTOS.find((x) => x.clave === a.fundamento)?.etiqueta;
-    return `${j ? `${j.numero ? `#${j.numero} ` : ""}${j.nombre}` : "Jugador borrado"} · ${f} ${t?.etiqueta.toLowerCase() ?? a.tipo}`;
-  };
-
-  return (
-    <div className="fondo-halos flex min-h-dvh flex-col">
-      <header className="flex items-center gap-2 px-3 py-2">
-        <button type="button" onClick={onVolver} className={BOTON}>
-          ← Volver
-        </button>
-        <p className="flex-1 text-center text-sm font-bold tracking-[0.2em] text-tenue uppercase">
-          {terminado ? `Ganó ${m.nombres[m.ganador!]}` : `Set ${numeroDeSet(m)}`}
-        </p>
-        <button
-          type="button"
-          onClick={() => onCambiar(partido.acciones.slice(0, -1))}
-          disabled={partido.acciones.length === 0}
-          className={BOTON}
-        >
-          ↶ Deshacer
-        </button>
-      </header>
-
-      {/* Marcador */}
-      <div className="grid grid-cols-2 gap-2 px-3">
-        {(["local", "visita"] as const).map((lado) => (
-          <div key={lado} className={`rounded-2xl border-2 p-2 text-center ${LADO_COLOR[lado]}`}>
-            <p className="truncate text-sm font-bold uppercase">{m.nombres[lado]}</p>
-            <p className="text-5xl font-black tabular-nums">{m.puntos[lado]}</p>
-            <p className="text-xs text-tenue">
-              Sets {m.sets[lado]}
-              {m.saque === lado && " · saca"}
-            </p>
-            <button
-              type="button"
-              disabled={terminado}
-              onClick={() => sumar({ id: nuevoId(), lado, jugador: null, fundamento: null, tipo: "punto" })}
-              className="mt-1 w-full rounded-lg border border-borde py-1 text-xs text-tenue hover:text-hueso disabled:opacity-40"
-            >
-              + Punto sin jugador
-            </button>
-          </div>
-        ))}
-      </div>
-      {m.jugados.length > 0 && (
-        <p className="mt-1 text-center text-xs text-tenue">
-          Sets: {m.jugados.map((s) => `${s.local}-${s.visita}`).join(" · ")}
-        </p>
-      )}
-
-      {/* Jugadores */}
-      <div className="mt-3 grid grid-cols-2 gap-2 px-3">
-        {(["local", "visita"] as const).map((lado) => (
-          <div key={lado} className="space-y-1.5">
-            {(equipos[lado]?.jugadores ?? []).map((j) => {
-              const activo = elegido?.lado === lado && elegido.id === j.id;
-              return (
-                <button
-                  key={j.id}
-                  type="button"
-                  disabled={terminado}
-                  onClick={() => setElegido(activo ? null : { lado, id: j.id })}
-                  className={`flex w-full items-center gap-2 rounded-xl border-2 px-2 py-2 text-left text-sm transition disabled:opacity-40 ${
-                    activo ? LADO_COLOR[lado] : "border-borde bg-carbon"
-                  }`}
-                >
-                  <span className="w-7 text-right font-black tabular-nums">{j.numero || "–"}</span>
-                  <span className="truncate">{j.nombre}</span>
-                </button>
-              );
-            })}
-            {(equipos[lado]?.jugadores.length ?? 0) === 0 && (
-              <p className="text-xs text-tenue">Este equipo no tiene jugadores cargados.</p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Acciones del jugador elegido */}
-      {jugador && elegido && (
-        <div className="sticky bottom-0 mt-3 border-t border-borde bg-carbon/95 px-3 pt-2 pb-4 backdrop-blur">
-          <p className="mb-2 text-sm">
-            <span className="font-bold">
-              {jugador.numero && `#${jugador.numero} `}
-              {jugador.nombre}
-            </span>{" "}
-            <span className="text-tenue">· {m.nombres[elegido.lado]}</span>
-          </p>
-          <div className="space-y-2">
-            {FUNDAMENTOS.map((f) => (
-              <div key={f.clave} className="flex items-center gap-2">
-                <span className="w-20 shrink-0 text-xs font-semibold tracking-wide text-tenue uppercase">
-                  {f.etiqueta}
-                </span>
-                <div className="grid flex-1 auto-cols-fr grid-flow-col gap-1.5">
-                  {f.tipos.map((t) => (
-                    <button
-                      key={t.clave}
-                      type="button"
-                      onClick={() => anotarAccion(f.clave, t.clave)}
-                      className={`rounded-lg border py-2 text-xs font-bold transition active:scale-95 ${
-                        t.efecto === "punto"
-                          ? "border-emerald-500/60 bg-emerald-500/15"
-                          : t.efecto === "error"
-                            ? "border-bordo-2/70 bg-bordo/20"
-                            : "border-borde bg-carbon-2"
-                      }`}
-                    >
-                      {t.etiqueta}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Últimas jugadas */}
-      {!jugador && (
-        <div className="mt-4 px-3 pb-6">
-          <p className="text-xs font-semibold tracking-wide text-tenue uppercase">Últimas jugadas</p>
-          {partido.acciones.length === 0 ? (
-            <p className="mt-1 text-sm text-tenue">Tocá un jugador y elegí qué hizo.</p>
-          ) : (
-            <ol className="mt-1 space-y-0.5 text-sm">
-              {partido.acciones
-                .slice(-8)
-                .reverse()
-                .map((a) => (
-                  <li key={a.id} className="truncate">
-                    {nombreDe(a)}
-                  </li>
-                ))}
-            </ol>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -606,6 +416,7 @@ function VistaPremios({ torneo }: { torneo: DatosTorneo }) {
         <option value="todo">Todo el torneo</option>
         {torneo.partidos.map((p) => (
           <option key={p.id} value={p.id}>
+            {p.ronda ? `${NOMBRE_RONDA[p.ronda]}: ` : ""}
             {nombreEquipo(torneo, p.local)} vs {nombreEquipo(torneo, p.visita)}
           </option>
         ))}
@@ -639,8 +450,9 @@ function VistaPremios({ torneo }: { torneo: DatosTorneo }) {
       <TablaEstadisticas stats={stats} />
       <p className="text-xs text-tenue">
         Los premios son una sugerencia a partir de lo que se cargó: si un jugador se perdió partidos o
-        no se anotaron todas sus jugadas, conviene mirar la tabla antes de entregar. La recepción pide
-        al menos {MIN_RECEPCIONES} recepciones para competir.
+        no se anotaron todas sus jugadas, conviene mirar la tabla antes de entregar. Para el premio a la
+        recepción hay que haber recibido al menos un tercio de las pelotas que recibió el que más recibió
+        (ahora, {minimoRecepciones(stats)}).
       </p>
     </div>
   );
