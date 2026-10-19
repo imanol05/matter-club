@@ -14,7 +14,7 @@ export type { Lado };
 
 /* ───────────────────────────── Catálogo de acciones ───────────────────────────── */
 
-export type Fundamento = "saque" | "recepcion" | "ataque" | "bloqueo";
+export type Fundamento = "saque" | "recepcion" | "armado" | "ataque" | "bloqueo" | "defensa";
 
 /**
  * Qué le hace la acción al marcador:
@@ -27,45 +27,69 @@ export type Efecto = "punto" | "error" | null;
 export interface TipoAccion {
   clave: string;
   etiqueta: string;
+  /** Para la cabecera de la tabla de estadísticas. */
+  corta: string;
   efecto: Efecto;
 }
 
+/** En el orden en que pasan en una jugada, que es como se muestran los botones. */
 export const FUNDAMENTOS: { clave: Fundamento; etiqueta: string; tipos: TipoAccion[] }[] = [
   {
     clave: "saque",
     etiqueta: "Saque",
     tipos: [
-      { clave: "ace", etiqueta: "Ace", efecto: "punto" },
-      { clave: "enjuego", etiqueta: "En juego", efecto: null },
-      { clave: "error", etiqueta: "Error", efecto: "error" },
+      { clave: "ace", etiqueta: "Ace", corta: "Ace", efecto: "punto" },
+      { clave: "enjuego", etiqueta: "En juego", corta: "OK", efecto: null },
+      { clave: "error", etiqueta: "Error", corta: "Err", efecto: "error" },
     ],
   },
   {
     clave: "recepcion",
     etiqueta: "Recepción",
     tipos: [
-      { clave: "perfecta", etiqueta: "Perfecta", efecto: null },
-      { clave: "buena", etiqueta: "Buena", efecto: null },
-      { clave: "mala", etiqueta: "Mala", efecto: null },
-      { clave: "error", etiqueta: "Error", efecto: "error" },
+      { clave: "perfecta", etiqueta: "Perfecta", corta: "Perf", efecto: null },
+      { clave: "buena", etiqueta: "Buena", corta: "Bue", efecto: null },
+      { clave: "mala", etiqueta: "Mala", corta: "Mal", efecto: null },
+      { clave: "error", etiqueta: "Error", corta: "Err", efecto: "error" },
+    ],
+  },
+  {
+    // La asistencia no mueve el marcador: el punto ya lo anota el ataque.
+    clave: "armado",
+    etiqueta: "Armado",
+    tipos: [
+      { clave: "asistencia", etiqueta: "Asistencia", corta: "Asis", efecto: null },
+      { clave: "buena", etiqueta: "Buena", corta: "Bue", efecto: null },
+      { clave: "error", etiqueta: "Error", corta: "Err", efecto: "error" },
     ],
   },
   {
     clave: "ataque",
     etiqueta: "Ataque",
     tipos: [
-      { clave: "punto", etiqueta: "Punto", efecto: "punto" },
-      { clave: "enjuego", etiqueta: "En juego", efecto: null },
-      { clave: "error", etiqueta: "Error", efecto: "error" },
+      { clave: "punto", etiqueta: "Punto", corta: "Pto", efecto: "punto" },
+      { clave: "enjuego", etiqueta: "En juego", corta: "OK", efecto: null },
+      { clave: "error", etiqueta: "Error", corta: "Err", efecto: "error" },
     ],
   },
   {
     clave: "bloqueo",
     etiqueta: "Bloqueo",
     tipos: [
-      { clave: "punto", etiqueta: "Punto", efecto: "punto" },
-      { clave: "toque", etiqueta: "Toque", efecto: null },
-      { clave: "error", etiqueta: "Error", efecto: "error" },
+      { clave: "punto", etiqueta: "Punto", corta: "Pto", efecto: "punto" },
+      { clave: "toque", etiqueta: "Toque", corta: "Toq", efecto: null },
+      { clave: "error", etiqueta: "Error", corta: "Err", efecto: "error" },
+    ],
+  },
+  {
+    // Buena: la levantó y se pudo seguir jugando. Mala: la tocó pero no quedó
+    // jugable. Error: no la levantó, punto del rival.
+    clave: "defensa",
+    etiqueta: "Defensa",
+    tipos: [
+      { clave: "buena", etiqueta: "Buena", corta: "Bue", efecto: null },
+      { clave: "mala", etiqueta: "Mala", corta: "Mal", efecto: null },
+      { clave: "error", etiqueta: "Error", corta: "Err", efecto: "error" },
     ],
   },
 ];
@@ -108,16 +132,26 @@ export interface PartidoTorneo {
 
 export interface Torneo {
   nombre: string;
+  /** Formato con el que arrancan los partidos nuevos: 2 = al mejor de 3, 3 = al mejor de 5. */
+  setsParaGanar: 2 | 3;
   equipos: Equipo[];
   partidos: PartidoTorneo[];
 }
 
 export function torneoNuevo(): Torneo {
-  return { nombre: "Torneo Matter", equipos: [], partidos: [] };
+  return { nombre: "Torneo Matter", setsParaGanar: 2, equipos: [], partidos: [] };
 }
 
 export function nuevoId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+/**
+ * Completa lo que no tenían los torneos guardados con una versión anterior.
+ * Hay que pasarle algo que ya pasó por `esTorneo`.
+ */
+export function normalizar(t: Torneo): Torneo {
+  return { ...t, setsParaGanar: t.setsParaGanar === 3 ? 3 : 2 };
 }
 
 /** Lo mínimo para no dibujar algo que rompa la pantalla (un guardado viejo, un archivo ajeno). */
@@ -219,7 +253,7 @@ export function estadisticas(t: Torneo, partidos: PartidoTorneo[] = t.partidos):
         equipo,
         conteo: c,
         puntos: c.ataque.punto + c.bloqueo.punto + c.saque.ace,
-        errores: c.saque.error + c.recepcion.error + c.ataque.error + c.bloqueo.error,
+        errores: FUNDAMENTOS.reduce((s, f) => s + c[f.clave].error, 0),
         recepciones,
         promedioRecepcion: recepciones ? suma / recepciones : null,
       };
@@ -267,21 +301,45 @@ function cuantos(n: number, uno: string, varios: string): string {
 }
 
 export function premios(todos: Estadistica[]): Premio[] {
-  const saldo = (e: Estadistica) => e.puntos - e.errores;
   return [
     {
-      titulo: "Jugador del torneo (MVP)",
-      criterio: "Puntos (ataque + bloqueo + ace) menos errores. Desempata quien hizo más puntos.",
-      podio: podio(todos, saldo, (e) => e.puntos, (e) => `${saldo(e)} (${e.puntos} pts, ${e.errores} err)`),
-    },
-    {
-      titulo: "Mejor atacante",
-      criterio: "Puntos de ataque. Desempata quien cometió menos errores de ataque.",
+      titulo: "Mejor saque",
+      criterio: "Aces. Desempata quien cometió menos errores de saque.",
       podio: podio(
         todos,
-        (e) => e.conteo.ataque.punto,
-        (e) => -e.conteo.ataque.error,
-        (e) => `${e.conteo.ataque.punto} pts`,
+        (e) => e.conteo.saque.ace,
+        (e) => -e.conteo.saque.error,
+        (e) => cuantos(e.conteo.saque.ace, "ace", "aces"),
+      ),
+    },
+    {
+      titulo: "Mejor armador",
+      criterio: "Asistencias (armados que terminaron en punto). Desempata quien cometió menos errores de armado.",
+      podio: podio(
+        todos,
+        (e) => e.conteo.armado.asistencia,
+        (e) => -e.conteo.armado.error,
+        (e) => cuantos(e.conteo.armado.asistencia, "asistencia", "asistencias"),
+      ),
+    },
+    {
+      titulo: "Mejor receptor",
+      criterio: `Promedio de recepción de 0 a 3, con al menos ${MIN_RECEPCIONES} recepciones. Desempata quien recibió más.`,
+      podio: podio(
+        todos,
+        (e) => (e.recepciones >= MIN_RECEPCIONES ? e.promedioRecepcion : null),
+        (e) => e.recepciones,
+        (e) => `${e.promedioRecepcion!.toFixed(2)} en ${e.recepciones}`,
+      ),
+    },
+    {
+      titulo: "Mejor defensa",
+      criterio: "Defensas buenas (pelotas levantadas que siguieron en juego). Desempata quien cometió menos errores de defensa.",
+      podio: podio(
+        todos,
+        (e) => e.conteo.defensa.buena,
+        (e) => -e.conteo.defensa.error,
+        (e) => cuantos(e.conteo.defensa.buena, "defensa", "defensas"),
       ),
     },
     {
@@ -295,23 +353,13 @@ export function premios(todos: Estadistica[]): Premio[] {
       ),
     },
     {
-      titulo: "Mejor sacador",
-      criterio: "Aces. Desempata quien cometió menos errores de saque.",
+      titulo: "Mejor ataque",
+      criterio: "Puntos de ataque. Desempata quien cometió menos errores de ataque.",
       podio: podio(
         todos,
-        (e) => e.conteo.saque.ace,
-        (e) => -e.conteo.saque.error,
-        (e) => cuantos(e.conteo.saque.ace, "ace", "aces"),
-      ),
-    },
-    {
-      titulo: "Mejor receptor",
-      criterio: `Promedio de recepción de 0 a 3, con al menos ${MIN_RECEPCIONES} recepciones. Desempata quien recibió más.`,
-      podio: podio(
-        todos,
-        (e) => (e.recepciones >= MIN_RECEPCIONES ? e.promedioRecepcion : null),
-        (e) => e.recepciones,
-        (e) => `${e.promedioRecepcion!.toFixed(2)} en ${e.recepciones}`,
+        (e) => e.conteo.ataque.punto,
+        (e) => -e.conteo.ataque.error,
+        (e) => cuantos(e.conteo.ataque.punto, "punto", "puntos"),
       ),
     },
   ];

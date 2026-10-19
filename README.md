@@ -74,12 +74,18 @@ y premiar a los mejores al final. Se cargan los equipos con sus jugadores
 (número y nombre), se arma cada partido y se anota jugada por jugada: se toca
 al jugador y después qué hizo.
 
+Los partidos son al mejor de 3 sets; en **Partidos** se puede pasar el torneo
+al mejor de 5. El cambio vale para los partidos que se armen después: los que
+ya empezaron siguen con el formato con el que arrancaron.
+
 | Fundamento | Opciones                        | Qué hace con el marcador    |
 | ---------- | ------------------------------- | --------------------------- |
 | Saque      | Ace · En juego · Error          | Ace suma; error, al rival   |
 | Recepción  | Perfecta · Buena · Mala · Error | Error, punto para el rival  |
+| Armado     | Asistencia · Buena · Error      | Error, punto para el rival  |
 | Ataque     | Punto · En juego · Error        | Punto suma; error, al rival |
 | Bloqueo    | Punto · Toque · Error           | Punto suma; error, al rival |
+| Defensa    | Buena · Mala · Error            | Error, punto para el rival  |
 
 Un partido no guarda el marcador sino la lista de jugadas: el marcador se
 rearma reproduciéndolas con las reglas del tablero (`lib/tablero.ts`). Así
@@ -88,16 +94,22 @@ estadísticas. Para los puntos que no son de nadie (un error del rival que no
 se cargó, una falta) está **+ Punto sin jugador**.
 
 Ojo con anotar dos veces el mismo punto: un ace y el error de recepción del
-otro lado son la misma pelota. Conviene anotar sólo uno de los dos.
+otro lado son la misma pelota, y lo mismo un ataque que hace punto y el error
+de defensa del rival. Conviene anotar sólo uno de los dos. La asistencia no
+mueve el marcador justamente por eso: el punto ya lo anota el ataque.
 
 Los premios (`lib/torneo.ts`) son una sugerencia sobre lo cargado:
 
-- **MVP**: puntos (ataque + bloqueo + ace) menos errores.
-- **Mejor atacante**: puntos de ataque.
-- **Mejor bloqueador**: puntos de bloqueo.
-- **Mejor sacador**: aces.
+- **Mejor saque**: aces.
+- **Mejor armador**: asistencias.
 - **Mejor receptor**: promedio de 0 a 3 (perfecta 3, buena 2, mala 1, error
   0), con un mínimo de recepciones para que no gane uno que recibió una sola.
+- **Mejor defensa**: defensas buenas.
+- **Mejor bloqueador**: puntos de bloqueo.
+- **Mejor ataque**: puntos de ataque.
+
+Los empates se desempatan por menos errores en ese fundamento (en bloqueo, por
+más toques; en recepción, por más pelotas recibidas).
 
 Como el tablero, todo queda en el navegador (`localStorage`) y anda sin
 internet. Por eso hay **Exportar** e **Importar**: el torneo baja a un .json

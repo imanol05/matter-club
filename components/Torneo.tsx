@@ -22,6 +22,7 @@ import {
   estadisticas,
   marcador,
   nombreEquipo,
+  normalizar,
   nuevoId,
   premios,
   tipoAccion,
@@ -44,7 +45,7 @@ function leerGuardado(): DatosTorneo {
     const crudo = localStorage.getItem(CLAVE);
     if (crudo) {
       const t = JSON.parse(crudo);
-      if (esTorneo(t)) return t;
+      if (esTorneo(t)) return normalizar(t);
     }
   } catch {
     // Navegación privada o dato roto: arrancamos de cero.
@@ -296,12 +297,18 @@ function TarjetaEquipo({
 function VistaPartidos({ torneo, setTorneo, onAbrir }: Props & { onAbrir: (id: string) => void }) {
   const [local, setLocal] = useState("");
   const [visita, setVisita] = useState("");
-  const [setsParaGanar, setSets] = useState<2 | 3>(2);
 
   const crear = (e: React.FormEvent) => {
     e.preventDefault();
     if (!local || !visita || local === visita) return;
-    const p: PartidoTorneo = { id: nuevoId(), local, visita, setsParaGanar, creado: Date.now(), acciones: [] };
+    const p: PartidoTorneo = {
+      id: nuevoId(),
+      local,
+      visita,
+      setsParaGanar: torneo.setsParaGanar,
+      creado: Date.now(),
+      acciones: [],
+    };
     setTorneo((t) => ({ ...t, partidos: [...t.partidos, p] }));
     onAbrir(p.id);
   };
@@ -318,6 +325,19 @@ function VistaPartidos({ torneo, setTorneo, onAbrir }: Props & { onAbrir: (id: s
 
   return (
     <div className="space-y-4">
+      <label className="flex flex-wrap items-center gap-2 text-sm text-tenue">
+        Los partidos se juegan
+        <select
+          value={torneo.setsParaGanar}
+          onChange={(e) => setTorneo((t) => ({ ...t, setsParaGanar: Number(e.target.value) === 3 ? 3 : 2 }))}
+          className={CAMPO}
+        >
+          <option value={2}>al mejor de 3 sets</option>
+          <option value={3}>al mejor de 5 sets</option>
+        </select>
+        <span className="text-xs">(vale para los partidos nuevos)</span>
+      </label>
+
       <form onSubmit={crear} className="flex flex-wrap items-center gap-2">
         <select value={local} onChange={(e) => setLocal(e.target.value)} className={CAMPO}>
           <option value="">Local…</option>
@@ -338,14 +358,6 @@ function VistaPartidos({ torneo, setTorneo, onAbrir }: Props & { onAbrir: (id: s
               </option>
             ))}
         </select>
-        <select
-          value={setsParaGanar}
-          onChange={(e) => setSets(Number(e.target.value) as 2 | 3)}
-          className={CAMPO}
-        >
-          <option value={2}>Al mejor de 3</option>
-          <option value={3}>Al mejor de 5</option>
-        </select>
         <button type="submit" disabled={!local || !visita || local === visita} className={BOTON}>
           Empezar partido
         </button>
@@ -363,7 +375,7 @@ function VistaPartidos({ torneo, setTorneo, onAbrir }: Props & { onAbrir: (id: s
                   {m.nombres.local} <span className="text-tenue">vs</span> {m.nombres.visita}
                 </p>
                 <p className="text-xs text-tenue">
-                  Sets {m.sets.local}–{m.sets.visita}
+                  Al mejor de {p.setsParaGanar * 2 - 1} · Sets {m.sets.local}–{m.sets.visita}
                   {m.jugados.length > 0 && ` (${m.jugados.map((s) => `${s.local}-${s.visita}`).join(", ")})`}
                   {" · "}
                   {m.ganador ? `Ganó ${m.nombres[m.ganador]}` : "En juego"}
@@ -634,12 +646,24 @@ function VistaPremios({ torneo }: { torneo: DatosTorneo }) {
   );
 }
 
+/** Las columnas de cada fundamento. La recepción se resume en promedio y total. */
+const COLUMNAS = FUNDAMENTOS.map((f) => ({
+  ...f,
+  columnas:
+    f.clave === "recepcion"
+      ? [
+          { titulo: "Prom", valor: (e: Estadistica) => e.promedioRecepcion?.toFixed(2) ?? "–" },
+          { titulo: "Tot", valor: (e: Estadistica) => String(e.recepciones) },
+        ]
+      : f.tipos.map((t) => ({ titulo: t.corta, valor: (e: Estadistica) => String(e.conteo[f.clave][t.clave]) })),
+}));
+
 function TablaEstadisticas({ stats }: { stats: Estadistica[] }) {
   const ordenadas = [...stats].sort((a, b) => b.puntos - a.puntos);
   const celda = "px-2 py-1 text-right tabular-nums";
   return (
     <div className="overflow-x-auto rounded-2xl border border-borde">
-      <table className="w-full min-w-[640px] text-sm">
+      <table className="w-full min-w-[900px] text-sm">
         <thead className="bg-carbon-2 text-xs text-tenue">
           <tr>
             <th className="px-2 py-1 text-left" rowSpan={2}>
@@ -651,52 +675,40 @@ function TablaEstadisticas({ stats }: { stats: Estadistica[] }) {
             <th className={celda} rowSpan={2}>
               Err
             </th>
-            <th className="px-2 pt-1 text-center" colSpan={3}>
-              Saque
-            </th>
-            <th className="px-2 pt-1 text-center" colSpan={2}>
-              Recepción
-            </th>
-            <th className="px-2 pt-1 text-center" colSpan={3}>
-              Ataque
-            </th>
-            <th className="px-2 pt-1 text-center" colSpan={3}>
-              Bloqueo
-            </th>
-          </tr>
-          <tr>
-            {["Ace", "OK", "Err", "Prom", "Tot", "Pto", "OK", "Err", "Pto", "Toq", "Err"].map((h, i) => (
-              <th key={i} className={celda}>
-                {h}
+            {COLUMNAS.map((f) => (
+              <th key={f.clave} className="border-l border-borde px-2 pt-1 text-center" colSpan={f.columnas.length}>
+                {f.etiqueta}
               </th>
             ))}
           </tr>
+          <tr>
+            {COLUMNAS.flatMap((f) =>
+              f.columnas.map((c, i) => (
+                <th key={`${f.clave}-${c.titulo}`} className={`${celda} ${i === 0 ? "border-l border-borde" : ""}`}>
+                  {c.titulo}
+                </th>
+              )),
+            )}
+          </tr>
         </thead>
         <tbody>
-          {ordenadas.map((e) => {
-            const c = e.conteo;
-            return (
-              <tr key={e.jugador.id} className="border-t border-borde">
-                <td className="px-2 py-1">
-                  <span className="font-semibold">{e.jugador.nombre}</span>{" "}
-                  <span className="text-xs text-tenue">{e.equipo.nombre}</span>
-                </td>
-                <td className={`${celda} font-bold`}>{e.puntos}</td>
-                <td className={celda}>{e.errores}</td>
-                <td className={celda}>{c.saque.ace}</td>
-                <td className={celda}>{c.saque.enjuego}</td>
-                <td className={celda}>{c.saque.error}</td>
-                <td className={celda}>{e.promedioRecepcion?.toFixed(2) ?? "–"}</td>
-                <td className={celda}>{e.recepciones}</td>
-                <td className={celda}>{c.ataque.punto}</td>
-                <td className={celda}>{c.ataque.enjuego}</td>
-                <td className={celda}>{c.ataque.error}</td>
-                <td className={celda}>{c.bloqueo.punto}</td>
-                <td className={celda}>{c.bloqueo.toque}</td>
-                <td className={celda}>{c.bloqueo.error}</td>
-              </tr>
-            );
-          })}
+          {ordenadas.map((e) => (
+            <tr key={e.jugador.id} className="border-t border-borde">
+              <td className="px-2 py-1">
+                <span className="font-semibold">{e.jugador.nombre}</span>{" "}
+                <span className="text-xs text-tenue">{e.equipo.nombre}</span>
+              </td>
+              <td className={`${celda} font-bold`}>{e.puntos}</td>
+              <td className={celda}>{e.errores}</td>
+              {COLUMNAS.flatMap((f) =>
+                f.columnas.map((c, i) => (
+                  <td key={`${f.clave}-${c.titulo}`} className={`${celda} ${i === 0 ? "border-l border-borde" : ""}`}>
+                    {c.valor(e)}
+                  </td>
+                )),
+              )}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -723,7 +735,7 @@ function Archivo({ torneo, setTorneo }: Props) {
     try {
       const t = JSON.parse(await archivo.text());
       if (!esTorneo(t)) throw new Error();
-      if (confirm(`¿Reemplazar el torneo actual por "${t.nombre}"?`)) setTorneo(t);
+      if (confirm(`¿Reemplazar el torneo actual por "${t.nombre}"?`)) setTorneo(normalizar(t));
     } catch {
       alert("Ese archivo no es un torneo exportado desde acá.");
     }
