@@ -308,6 +308,39 @@ export function preguntasDespues(f: Fundamento, tipo: string): Pregunta[] {
 }
 
 /**
+ * Qué fundamento sigue en la pelota, para no mostrar los seis siempre:
+ * de un saque en juego se pasa a la recepción, de ahí al armado, de ahí al
+ * ataque, y si sigue en juego a bloqueo y defensa, que vuelven a armar. Las
+ * jugadas que terminan la pelota (ace, error, punto) no tienen "siguiente":
+ * la próxima es otro saque.
+ */
+const SIGUIENTE_FUNDAMENTO: Partial<Record<Fundamento, Record<string, Fundamento[]>>> = {
+  saque: { enjuego: ["recepcion"] },
+  recepcion: { perfecta: ["armado"], buena: ["armado"], mala: ["armado"] },
+  armado: { asistencia: ["ataque"], buena: ["ataque"] },
+  ataque: { enjuego: ["bloqueo", "defensa"] },
+  bloqueo: { toque: ["defensa"] },
+  defensa: { buena: ["armado"], mala: ["armado"] },
+};
+
+/** Si alguna acción del grupo (sin contar las ligadas) movió el marcador. */
+function grupoAnotoPunto(acciones: Accion[], grupo: string): boolean {
+  return acciones.some((a) => (a.grupo ?? a.id) === grupo && !a.ligada && ladoQueSuma(a) !== null);
+}
+
+/**
+ * El o los fundamentos que tiene sentido anotar ahora, a partir de la última
+ * acción cargada. Sin acciones, o si la última pelota terminó en punto,
+ * arranca de nuevo por el saque.
+ */
+export function fundamentosSiguientes(acciones: Accion[]): Fundamento[] {
+  const ultima = acciones.at(-1);
+  if (!ultima || ultima.fundamento === null) return ["saque"];
+  if (grupoAnotoPunto(acciones, ultima.grupo ?? ultima.id)) return ["saque"];
+  return SIGUIENTE_FUNDAMENTO[ultima.fundamento]?.[ultima.tipo] ?? ["saque"];
+}
+
+/**
  * La acción que sale de contestar una pregunta. `yaSumo` dice si alguna acción
  * anterior de la misma pelota ya movió el marcador: si es así, esta queda
  * ligada para no sumar el mismo punto dos veces.
