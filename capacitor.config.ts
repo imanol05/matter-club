@@ -1,14 +1,16 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
- * Apps Android del club. Son dos, armadas con el mismo proyecto nativo:
+ * Apps Android del club. Son tres, armadas con el mismo proyecto nativo:
  *
  * - **Matter** (`npm run apk`): el panel de los dueños, abre /admin.
  * - **Matter Tablero** (`npm run apk:tablero`): el control del tablero de vóley
  *   en el celu, abre /tablero. Se elige con APP=tablero, y del lado nativo con
  *   `-Ptablero` (ver android/app/build.gradle).
+ * - **Matter Torneo** (`npm run apk:torneo`): la carga del torneo, abre
+ *   /torneo. Se elige con APP=torneo y `-Ptorneo`.
  *
- * Las dos se pueden tener instaladas a la vez: tienen distinto appId.
+ * Se pueden tener instaladas todas a la vez: tienen distinto appId.
  *
  * Detalles de la del panel:
  *
@@ -22,14 +24,19 @@ import type { CapacitorConfig } from "@capacitor/cli";
  *
  * Los clientes no usan esto: para ellos es la página web y listo.
  */
-const tablero = process.env.APP === "tablero";
+const APPS = {
+  panel: { appId: "com.matterclub.panel", appName: "Matter", ruta: "/admin" },
+  tablero: { appId: "com.matterclub.tablero", appName: "Matter Tablero", ruta: "/tablero" },
+  torneo: { appId: "com.matterclub.torneo", appName: "Matter Torneo", ruta: "/torneo" },
+};
+const app = APPS[process.env.APP as keyof typeof APPS] ?? APPS.panel;
 
 const config: CapacitorConfig = {
   // Ojo: `cap sync` no reescribe ni el id ni el nombre una vez creado el
   // proyecto nativo. Los que valen son los de android/app/build.gradle; si se
   // cambian acá, hay que cambiarlos también allá.
-  appId: tablero ? "com.matterclub.tablero" : "com.matterclub.panel",
-  appName: tablero ? "Matter Tablero" : "Matter",
+  appId: app.appId,
+  appName: app.appName,
   // Con `server.url` el contenido sale de internet, pero Capacitor igual exige
   // que esta carpeta exista. Se genera con `npm run build:estatico`.
   webDir: "out",
@@ -37,7 +44,7 @@ const config: CapacitorConfig = {
     // Va SIN barra final a propósito. El sitio se exporta con trailingSlash,
     // pero Netlify redirige /admin/ a /admin con un 308: apuntar a la versión
     // con barra hace que la app pague ese salto cada vez que arranca.
-    url: tablero ? "https://matterclub.netlify.app/tablero" : "https://matterclub.netlify.app/admin",
+    url: `https://matterclub.netlify.app${app.ruta}`,
     // Sin texto plano: el sitio es HTTPS y no hay motivo para permitir HTTP.
     cleartext: false,
   },
