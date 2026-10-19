@@ -57,6 +57,15 @@ const config: CapacitorConfig = {
     // Evita el flash blanco antes de que cargue la página.
     backgroundColor: "#090c12",
   },
+  plugins: {
+    // El tablero, el torneo y la tele se usan a pantalla completa, sin barra
+    // de estado ni de navegación de Android (el panel, no: ahí no molesta y
+    // se usa como una app cualquiera). El botón "pantalla completa" de la web
+    // sólo agranda el contenido adentro del WebView: nunca tocaba estas
+    // barras, por eso en la app nunca se veía completo por más que se
+    // tocara.
+    SystemBars: { hidden: app.appId !== APPS.panel.appId },
+  },
 };
 
 export default config;
