@@ -25,6 +25,7 @@ import { numeroDeSet, otro } from "@/lib/tablero";
 import {
   FUNDAMENTOS,
   NOMBRE_RONDA,
+  PUESTOS,
   alineacionEnJuego,
   debeRotar,
   enCancha,
@@ -154,12 +155,12 @@ export function CargaPartido({
     visita: torneo.equipos.find((e) => e.id === partido.visita),
   };
   const cancha: Record<Lado, Jugador[]> = {
-    local: enCancha(partido, equipos.local, "local"),
-    visita: enCancha(partido, equipos.visita, "visita"),
+    local: enCancha(partido, equipos.local, "local", m.saque),
+    visita: enCancha(partido, equipos.visita, "visita", m.saque),
   };
   const alineacion: Record<Lado, LugarEnJuego[]> = {
-    local: alineacionEnJuego(partido, equipos.local, "local"),
-    visita: alineacionEnJuego(partido, equipos.visita, "visita"),
+    local: alineacionEnJuego(partido, equipos.local, "local", m.saque),
+    visita: alineacionEnJuego(partido, equipos.visita, "visita", m.saque),
   };
   const jugadorDe = (lado: Lado, id: string | null) => equipos[lado]?.jugadores.find((j) => j.id === id);
 
@@ -382,10 +383,17 @@ export function CargaPartido({
                   key={j.id}
                   type="button"
                   onClick={() => contestar(j.id)}
-                  className={`truncate rounded-lg border-2 px-2 py-2 text-sm font-semibold ${LADO_COLOR[ladoPregunta]}`}
+                  className={`truncate rounded-lg border-2 px-2 py-2 text-center text-sm font-semibold leading-tight ${LADO_COLOR[ladoPregunta]}`}
                 >
                   {j.numero && `${j.numero} `}
                   {j.nombre}
+                  {(equipos[ladoPregunta]?.liberoId === j.id || j.puesto) && (
+                    <span className="block text-[0.6rem] font-bold text-emerald-400">
+                      {equipos[ladoPregunta]?.liberoId === j.id
+                        ? "L"
+                        : PUESTOS.find((p) => p.clave === j.puesto)?.abreviatura}
+                    </span>
+                  )}
                 </button>
               ))}
           </div>
@@ -409,6 +417,13 @@ export function CargaPartido({
               {elegidoJugador.nombre}
             </span>{" "}
             <span className="text-tenue">· {m.nombres[elegido.lado]}</span>
+            {(equipos[elegido.lado]?.liberoId === elegido.id || elegidoJugador.puesto) && (
+              <span className="block text-xs font-semibold text-emerald-400">
+                {equipos[elegido.lado]?.liberoId === elegido.id
+                  ? "Líbero"
+                  : PUESTOS.find((p) => p.clave === elegidoJugador.puesto)?.etiqueta}
+              </span>
+            )}
           </p>
           <div className="space-y-2">
             {FUNDAMENTOS.filter((f) => verTodos || siguiente.includes(f.clave)).map((f) => (
@@ -530,10 +545,18 @@ function GrillaCancha({
       >
         <span className="font-black tabular-nums">{l.jugador.numero || "–"}</span>
         <span className="w-full truncate text-[0.65rem]">{l.jugador.nombre}</span>
-        {/* Reglas FIVB desde 2021: el líbero puede sacar en el único lugar en el
-            que juega, así que "L" y "saca" pueden darse juntos acá. */}
+        {/* El líbero no saca: `alineacionEnJuego` ya resuelve que en ese lugar
+            juegue el titular cuando le toca sacar, así que acá nunca se ven
+            "L" y "saca" juntos. La posición (si se cargó) ayuda a ubicar de
+            un vistazo quién arma o ataca. */}
         <span className="text-[0.6rem] font-bold text-emerald-400">
-          {[l.esLibero && "L", l.indice === 0 && "saca"].filter(Boolean).join(" · ") || " "}
+          {[
+            l.esLibero && "L",
+            !l.esLibero && l.jugador.puesto && PUESTOS.find((p) => p.clave === l.jugador!.puesto)?.abreviatura,
+            l.indice === 0 && "saca",
+          ]
+            .filter(Boolean)
+            .join(" · ") || " "}
         </span>
       </button>
     );
@@ -747,11 +770,15 @@ function DialogoAlineacion({
   const completo = orden.length === 6;
   const libre = equipo.liberoId;
   const liberoSuelto = !!libre && !orden.includes(libre);
+  // Los dos centrales siempre quedan opuestos en la rotación (a 3 lugares de
+  // distancia): mientras uno juega adelante el otro está atrás, así que el
+  // líbero sale por los dos, no por uno solo.
+  const opuesto = libero === null ? null : (libero + 3) % 6;
 
   const guardar = () => {
     const lugares: LugarRotacion[] = orden.map((id, i) => ({
       titular: id,
-      ...(i === libero && libre ? { libero: libre } : {}),
+      ...(libre && (i === libero || i === opuesto) ? { libero: libre } : {}),
     }));
     onGuardar(lugares);
     onCerrar();
@@ -786,19 +813,25 @@ function DialogoAlineacion({
       {completo && liberoSuelto && (
         <div className="mt-4">
           <p className="mb-2 text-sm text-tenue">
-            ¿En qué lugar entra {equipo.jugadores.find((j) => j.id === libre)?.nombre} (líbero) cuando le toca
-            atrás?
+            ¿Por cuál de los dos centrales entra {equipo.jugadores.find((j) => j.id === libre)?.nombre} (líbero)
+            cuando le toca atrás? El otro central queda cubierto solo: en la rotación siempre están opuestos, así
+            que mientras uno juega adelante el líbero está reemplazando al otro atrás.
           </p>
           <div className="grid grid-cols-3 gap-1.5">
             {orden.map((id, i) => {
               const j = equipo.jugadores.find((x) => x.id === id);
+              const marcado = libero === i || opuesto === i;
               return (
                 <button
                   key={id}
                   type="button"
                   onClick={() => setLibero((l) => (l === i ? null : i))}
                   className={`truncate rounded-lg border-2 px-2 py-2 text-xs font-semibold ${
-                    libero === i ? "border-emerald-500/70 bg-emerald-500/15" : "border-borde text-tenue"
+                    libero === i
+                      ? "border-emerald-500/70 bg-emerald-500/15"
+                      : marcado
+                        ? "border-emerald-500/40 bg-emerald-500/5 text-tenue"
+                        : "border-borde text-tenue"
                   }`}
                 >
                   {i + 1}. {j?.nombre}
