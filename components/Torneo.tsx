@@ -20,6 +20,7 @@ import { CargaPartido } from "./TorneoPartido";
 import {
   FUNDAMENTOS,
   NOMBRE_RONDA,
+  PUESTOS,
   esTorneo,
   estadisticas,
   minimoRecepciones,
@@ -32,6 +33,7 @@ import {
   type Estadistica,
   type Jugador,
   type PartidoTorneo,
+  type Puesto,
   type Torneo as DatosTorneo,
 } from "@/lib/torneo";
 
@@ -273,6 +275,19 @@ function TarjetaEquipo({
               aria-label="Nombre del jugador"
               className="min-w-0 flex-1 rounded-md bg-transparent px-1 focus:bg-carbon-2 focus:outline-none"
             />
+            <select
+              value={j.puesto ?? ""}
+              onChange={(e) => corregir(j.id, { puesto: (e.target.value || undefined) as Puesto | undefined })}
+              aria-label={`Posición de ${j.nombre}`}
+              className="w-16 shrink-0 rounded-md bg-transparent px-1 py-0.5 text-xs text-tenue focus:bg-carbon-2 focus:text-hueso focus:outline-none"
+            >
+              <option value="">Posición</option>
+              {PUESTOS.map((p) => (
+                <option key={p.clave} value={p.clave}>
+                  {p.etiqueta}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               onClick={() => marcarLibero(j.id)}

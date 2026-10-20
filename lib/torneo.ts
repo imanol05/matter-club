@@ -108,10 +108,22 @@ export function tipoAccion(f: Fundamento, clave: string): TipoAccion | undefined
 
 /* ───────────────────────────── Datos ───────────────────────────── */
 
+/** El puesto habitual del jugador en la cancha (el líbero se marca aparte, con `Equipo.liberoId`). */
+export type Puesto = "armador" | "opuesto" | "central" | "punta";
+
+export const PUESTOS: { clave: Puesto; etiqueta: string; abreviatura: string }[] = [
+  { clave: "armador", etiqueta: "Armador", abreviatura: "Arm" },
+  { clave: "opuesto", etiqueta: "Opuesto", abreviatura: "Op" },
+  { clave: "central", etiqueta: "Central", abreviatura: "Cen" },
+  { clave: "punta", etiqueta: "Punta", abreviatura: "Pta" },
+];
+
 export interface Jugador {
   id: string;
   nombre: string;
   numero: string;
+  /** Para saber de un vistazo quién arma, quién ataca por punta, etc. Opcional. */
+  puesto?: Puesto;
 }
 
 export interface Equipo {
@@ -154,6 +166,10 @@ export const NOMBRE_RONDA: Record<Ronda, string> = {
  * Un lugar de la rotación: quién lo ocupa. Si tiene `libero`, cuando ese lugar
  * le toca atrás juega el líbero en vez del titular (ver `LUGARES_ATRAS`); el
  * líbero nunca juega adelante, así que no hace falta impedirlo a mano.
+ *
+ * Excepción: el líbero no saca. Cuando a ese lugar le toca sacar, entra el
+ * titular solo para esa jugada; recién en la próxima pelota muerta (si el
+ * lugar le sigue tocando atrás) vuelve a entrar el líbero.
  */
 export interface LugarRotacion {
   titular: string;
@@ -392,14 +408,24 @@ export interface LugarEnJuego {
   suplantado?: Jugador;
 }
 
-/** Los 6 lugares de un lado, resolviendo a quién le toca jugar en cada uno. */
-export function alineacionEnJuego(p: PartidoTorneo, equipo: Equipo | undefined, lado: Lado): LugarEnJuego[] {
+/**
+ * Los 6 lugares de un lado, resolviendo a quién le toca jugar en cada uno.
+ * `saque` es quién está sacando ahora (o va a sacar): al lugar [0] de ese
+ * lado no lo puede ocupar el líbero en ese momento, porque le toca sacar.
+ */
+export function alineacionEnJuego(
+  p: PartidoTorneo,
+  equipo: Equipo | undefined,
+  lado: Lado,
+  saque: Lado | null,
+): LugarEnJuego[] {
   if (!equipo) return [];
   const porId = new Map(equipo.jugadores.map((j) => [j.id, j]));
   const lugares = p.alineacion?.[lado] ?? alineacionPorDefecto(equipo);
   return lugares.map((lugar, indice) => {
     const atras = LUGARES_ATRAS.includes(indice);
-    const esLibero = atras && !!lugar.libero;
+    const debeSacar = indice === 0 && lado === saque;
+    const esLibero = atras && !!lugar.libero && !debeSacar;
     return {
       indice,
       atras,
@@ -411,8 +437,8 @@ export function alineacionEnJuego(p: PartidoTorneo, equipo: Equipo | undefined, 
 }
 
 /** Los jugadores que están jugando ahora en un lado (resuelto el líbero), para elegir a quién le pasó algo. */
-export function enCancha(p: PartidoTorneo, equipo: Equipo | undefined, lado: Lado): Jugador[] {
-  return alineacionEnJuego(p, equipo, lado)
+export function enCancha(p: PartidoTorneo, equipo: Equipo | undefined, lado: Lado, saque: Lado | null): Jugador[] {
+  return alineacionEnJuego(p, equipo, lado, saque)
     .map((l) => l.jugador)
     .filter((j): j is Jugador => !!j);
 }
